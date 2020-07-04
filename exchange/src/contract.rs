@@ -84,6 +84,8 @@ fn try_swap_to_luna<S: Storage, A:Api, Q: Querier>(
     token_id: &Uint128,
     recipient: &HumanAddr
 ) -> StdResult<HandleResponse<Empty>> {
+    let senderH = deps.api.human_address(&env.message.sender)?;
+    let contractH = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
 
     // Get price from each reserve
@@ -101,7 +103,8 @@ fn try_swap_to_luna<S: Storage, A:Api, Q: Querier>(
             amount: *amount,
         }]
     });
-    //let token_transfer = create_transfer_from_msg(*token_address, senderH, contractH, *amount).unwrap();
+    let token_address = pair_get(&deps.storage, *token_id);
+    let token_transfer = create_transfer_from_msg(&deps.api, &token_address, senderH, contractH, *amount).unwrap();
 
     let res = HandleResponse {
         messages: vec![luna_transfer],
@@ -121,6 +124,8 @@ fn try_swap_to_token<S: Storage, A:Api, Q: Querier>(
     token_id: &Uint128,
     recipient: &HumanAddr
 ) -> StdResult<HandleResponse<Empty>> {
+    let senderH = deps.api.human_address(&env.message.sender)?;
+    let contractH = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
 
     // Get price from each reserve
@@ -136,7 +141,8 @@ fn try_swap_to_token<S: Storage, A:Api, Q: Querier>(
             amount: *amount,
         }]
     });
-    //let token_transfer = create_transfer_from_msg(*token_address, contractH, senderH, *amount).unwrap();
+    let token_address = pair_get(&deps.storage, *token_id);
+    let token_transfer = create_transfer_from_msg(&deps.api, &token_address, contractH, senderH, *amount).unwrap();
 
 
 
@@ -192,4 +198,15 @@ fn create_transfer_from_msg<A: Api>(api: &A, contract: &CanonicalAddr, owner: Hu
         send: vec![],
     };
     Ok(exec.into())
+}
+
+/// Get input price like UniswapV1
+fn get_input_price() {
+    unimplemented!()
+}
+
+
+/// Get output price like UniswapV1
+fn get_output_price() {
+    unimplemented!()
 }
