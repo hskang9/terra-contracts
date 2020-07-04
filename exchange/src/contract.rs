@@ -4,7 +4,7 @@ use cosmwasm_std::{log, CanonicalAddr, to_binary, to_vec, Api, BankMsg, Binary, 
 
 
 use crate::msg::{ConfigResponse, ERC20HandleMsg, HandleMsg, InitMsg, QueryMsg, ReserveResponse, PairResponse};
-use crate::state::{config, config_get, Config, pair_get, reserve_get};
+use crate::state::{config, config_get, Config, pair_get, pair_set, reserve_get, reserve_set};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -51,9 +51,9 @@ fn try_add_liquidity<S: Storage, A:Api, Q: Querier>(
     // Check whether the sender is the owner of the token contract
 
     // Register token in Tokens
-
+    pair_set(&mut deps.storage, *token_id, &deps.api.canonical_address(token_address)?);
     // Register each reserve in reserves
-
+    reserve_set(&mut deps.storage, *token_id, (*luna_amount, *token_amount));
 
     // Send msg to send each asset to contract address
     let luna_transfer = CosmosMsg::Bank(BankMsg::Send {
@@ -88,7 +88,7 @@ fn try_swap_to_luna<S: Storage, A:Api, Q: Querier>(
     let contractH = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
 
-    // Get price from each reserve
+    // Get price from each reserve Index 0: Luna, Index 1: Token
 
     // Change reserve amount
 
@@ -103,7 +103,7 @@ fn try_swap_to_luna<S: Storage, A:Api, Q: Querier>(
             amount: *amount,
         }]
     });
-    let token_address = pair_get(&deps.storage, *token_id);
+    let token_address = pair_get(&deps.storage, *token_id)?;
     let token_transfer = create_transfer_from_msg(&deps.api, &token_address, senderH, contractH, *amount).unwrap();
 
     let res = HandleResponse {
@@ -128,7 +128,7 @@ fn try_swap_to_token<S: Storage, A:Api, Q: Querier>(
     let contractH = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
 
-    // Get price from each reserve
+    // Get price from each reserve Index 0: Luna, Index 1: Token
 
     // Change reserve amount
 
@@ -141,7 +141,7 @@ fn try_swap_to_token<S: Storage, A:Api, Q: Querier>(
             amount: *amount,
         }]
     });
-    let token_address = pair_get(&deps.storage, *token_id);
+    let token_address = pair_get(&deps.storage, *token_id)?;
     let token_transfer = create_transfer_from_msg(&deps.api, &token_address, contractH, senderH, *amount).unwrap();
 
 
@@ -169,14 +169,14 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             Ok(out)
         },
         QueryMsg::Pair { token_id } => {
-            let token_address = pair_get(&deps.storage, token_id);
+            let token_address = pair_get(&deps.storage, token_id)?;
             let out = to_binary(&PairResponse {
                 token_address: deps.api.human_address(&token_address)?
             })?;
             Ok(out)
         }
         QueryMsg::Reserve { token_id } => {
-            let reserves = reserve_get(&deps.storage, token_id);
+            let reserves = reserve_get(&deps.storage, token_id)?;
             let out = to_binary(&ReserveResponse{
                 reserves
             })?;

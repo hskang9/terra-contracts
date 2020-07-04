@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{CanonicalAddr, Storage, Uint128, StdResult, Binary};
+use cosmwasm_std::{CanonicalAddr, Storage, Uint128, StdResult, Binary, StdError};
 use cosmwasm_storage::{ReadonlyBucket, Bucket, singleton, singleton_read, ReadonlySingleton, Singleton};
 
 pub static CONFIG_KEY: &[u8] = b"config";
@@ -29,11 +29,11 @@ pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()>
 /// Get pair between LUNA and token
 /// token_id: token id in bip standard
 /// address: token contract address
-pub fn pair_get<S: Storage>(storage: &S, token_id: Uint128) -> CanonicalAddr {
+pub fn pair_get<S: Storage>(storage: &S, token_id: Uint128) -> StdResult<CanonicalAddr> {
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
         Ok(Some(address)) => address,
-        _ => CanonicalAddr(Binary([0u8].to_vec())),
+        _ => Err(StdError::NotFound{kind: "token address is not registered for token_id".to_string(), backtrace: None}),
     }
 }
 
@@ -49,20 +49,19 @@ pub fn pair_set<S: Storage>(
     Bucket::new(PAIR_KEY, storage).save(&serialized, address)
 }
 
-/// Get pair between LUNA and token
+/// Get reserve between LUNA and token
 /// token_id: token id in bip standard
-pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> (Uint128, Uint128) {
+pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> StdResult<(Uint128, Uint128)> {
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
         Ok(Some(reserves)) => reserves,
-        _ => (Uint128(0), Uint128(0)),
+        _ => Err(StdError::NotFound{kind: "Reserve does not exist for the token_id".to_string(), backtrace: None}),
     }
 }
 
-
 /// set reserve between LUNA and token
 /// token_id: token id registered in bip standard
-/// reserves: reserve in uniswapv1 contract (LUNA, Token)
+/// returns reserves: reserve in uniswapv1 contract (LUNA, Token)
 pub fn reserve_set<S: Storage>(
     storage: &mut S,
     token_id: Uint128,
