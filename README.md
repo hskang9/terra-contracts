@@ -28,4 +28,3 @@ docker run --rm -v "$(pwd)":/code \
   cosmwasm/rust-optimizer:0.8.0 ./contracts/maker
 ```
 
-This was used to produce `contract.wasm` and `hash.txt` in `contracts/maker`.
