@@ -8,18 +8,22 @@ pub static CONFIG_KEY: &[u8] = b"config";
 pub static PAIR_KEY: &[u8] = b"pair";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
+pub struct Config {
     pub total_luna_supply: Uint128,
     pub minimum_luna: Uint128,
     pub owner: CanonicalAddr,
 }
 
-pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, State> {
+pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, Config> {
     singleton(storage, CONFIG_KEY)
 }
 
-pub fn config_read<S: Storage>(storage: &S) -> ReadonlySingleton<S, State> {
-    singleton_read(storage, CONFIG_KEY)
+pub fn config_get<S: Storage>(storage: &S) ->  StdResult<Config> {
+    ReadonlySingleton::new(storage, CONFIG_KEY).load()
+}
+
+pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()> {
+    Singleton::new(storage, CONFIG_KEY).save(config)
 }
 
 /// Get pair between LUNA and token

@@ -1,17 +1,17 @@
 use std::cmp::min;
 
-use cosmwasm_std::{log, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128, StdError, Empty, WasmMsg};
+use cosmwasm_std::{log, CanonicalAddr, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128, StdError, Empty, WasmMsg};
 
 
-use crate::msg::{ConfigResponse, ERC20HandleMsg, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse};
-use crate::state::{config, config_read, State};
+use crate::msg::{ConfigResponse, ERC20HandleMsg, HandleMsg, InitMsg, QueryMsg, ReserveResponse, PairResponse};
+use crate::state::{config, config_get, Config, pair_get, reserve_get};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
-    let state = State {
+    let state = Config {
         total_luna_supply: Uint128(0),
         minimum_luna: Uint128(1000),
         owner: env.message.sender,
@@ -64,7 +64,8 @@ fn try_add_liquidity<S: Storage, A:Api, Q: Querier>(
             amount: *luna_amount,
         }]
     });
-    let token_transfer = create_transfer_from_msg(*token_address, senderH, contractH, *token_amount).unwrap();
+    let token_canonical = deps.api.canonical_address(token_address)?;
+    let token_transfer = create_transfer_from_msg(&deps.api, &token_canonical, senderH, contractH, *token_amount).unwrap();
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
@@ -153,19 +154,40 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        ConfigResponse
+        QueryMsg::Config {} => {
+            let config = config_get(&deps.storage)?;
+            let out = to_binary(&ConfigResponse {
+                minimum_luna: config.minimum_luna,
+                owner: deps.api.human_address(&config.owner)?,
+        })?;
+            Ok(out)
+        },
+        QueryMsg::Pair { token_id } => {
+            let token_address = pair_get(&deps.storage, token_id);
+            let out = to_binary(&PairResponse {
+                token_address: deps.api.human_address(&token_address)?
+            })?;
+            Ok(out)
+        }
+        QueryMsg::Reserve { token_id } => {
+            let reserves = reserve_get(&deps.storage, token_id);
+            let out = to_binary(&ReserveResponse{
+                reserves
+            })?;
+            Ok(out)
+        }
     }
 }
 
 /// Execute TransferFrom message in ERC20 cosmwasm contract
-fn create_transfer_from_msg(contract: HumanAddr, owner: HumanAddr, recipient: HumanAddr, amount: Uint128) -> StdResult<CosmosMsg> {
+fn create_transfer_from_msg<A: Api>(api: &A, contract: &CanonicalAddr, owner: HumanAddr, recipient: HumanAddr, amount: Uint128) -> StdResult<CosmosMsg> {
     let msg = ERC20HandleMsg::TransferFrom {
         owner,
         recipient,
         amount: amount
     };
     let exec = WasmMsg::Execute {
-        contract_addr: contract,
+        contract_addr: api.human_address(contract)?,
         msg: to_binary(&msg)?,
         send: vec![],
     };

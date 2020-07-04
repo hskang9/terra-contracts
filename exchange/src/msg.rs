@@ -32,28 +32,7 @@ pub enum HandleMsg {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    Balance { address: HumanAddr },
-    Config {},
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct BalanceResponse {
-    pub balance: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct ConfigResponse {
-    pub name: String,
-    pub symbol: String,
-    pub owner: HumanAddr,
-}
-
-
-
-
+/// msg for calling external contract transaction
 #[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ERC20HandleMsg {
@@ -74,3 +53,30 @@ pub enum ERC20HandleMsg {
         amount: Uint128,
     },
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    Pair { token_id: Uint128 },
+    Reserve { token_id: Uint128 },
+    Config{},
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct PairResponse {
+    pub token_address: HumanAddr,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct ReserveResponse {
+    pub reserves: (Uint128, Uint128)
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct ConfigResponse {
+    pub minimum_luna: Uint128,
+    pub owner: HumanAddr,
+}
+
+
+
