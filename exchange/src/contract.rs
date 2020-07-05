@@ -280,26 +280,12 @@ fn create_transfer_msg<A: Api>(
     Ok(exec.into())
 }
 
-/// Execute TransferFrom message in ERC20 cosmwasm contract
-fn create_dex_approve_from_msg<A: Api>(
-    api: &A,
-    contract: &CanonicalAddr,
-    recipient: HumanAddr,
-    amount: Uint128,
-) -> StdResult<CosmosMsg> {
-    let msg = ERC20HandleMsg::Transfer {
-        recipient,
-        amount: amount,
-    };
-    let exec = WasmMsg::Execute {
-        contract_addr: api.human_address(contract)?,
-        msg: to_binary(&msg)?,
-        send: vec![],
-    };
-    Ok(exec.into())
-}
-
 /// Get input price like UniswapV1
+/// input_amount: amount of asset to exchange from
+/// input_reserve: reserve of asset to exchange from in Pair state
+/// output_reserve: reserve of asset to exchange to in Pair state
+///
+/// returns (u128, u128) as (numerator, denominator)
 fn get_input_price(
     input_amount: Uint128,
     input_reserve: Uint128,
@@ -313,6 +299,11 @@ fn get_input_price(
 }
 
 /// Get output price like UniswapV1
+/// output_amount: amount of asset to exchange to
+/// input_reserve: reserve of asset to exchange from in Pair state
+/// output_reserve: reserve of asset to exchange to in Pair state
+///
+/// returns (u128, u128) as (numerator, denominator)
 fn get_output_price(
     output_amount: Uint128,
     input_reserve: Uint128,
@@ -321,19 +312,23 @@ fn get_output_price(
     assert!(input_reserve > Uint128(0) && output_reserve > Uint128(0));
     let numerator: u128 = input_reserve.u128() * output_amount.u128() * 1000;
     let denominator: u128 = (output_reserve.u128() - output_amount.u128()) * 997;
-    return (numerator + denominator, denominator);
+    return (numerator + denominator, denominator); // (numerator / denominator) + 1
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_set, Config};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{coin, coins, CanonicalAddr, CosmosMsg, StdError, Uint128};
 
     const CANONICAL_LENGTH: usize = 20;
 
+    // State tests
     #[test]
-    fn test_something() {
+    fn config_get_works() {
         unimplemented!();
     }
+
+    // Querier tests
 }
