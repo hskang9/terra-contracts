@@ -80,9 +80,9 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     token_id: &Uint128,
 ) -> StdResult<HandleResponse> {
     // Human address for sender
-    let senderH = deps.api.human_address(&env.message.sender)?;
+    let sender_h = deps.api.human_address(&env.message.sender)?;
     // Human address for token contract
-    let contractH = deps.api.human_address(&env.contract.address)?;
+    let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check luna_amount > minimumLuna
 
     // Check whether token is already registered
@@ -93,9 +93,9 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
         &mut deps.storage,
         *token_id,
         &deps.api.canonical_address(token_address)?,
-    );
+    )?;
     // Register each reserve in reserves
-    reserve_set(&mut deps.storage, *token_id, (*luna_amount, *token_amount));
+    reserve_set(&mut deps.storage, *token_id, (*luna_amount, *token_amount))?;
 
     // Send msg to send each asset to contract address
     let luna_transfer = CosmosMsg::Bank(BankMsg::Send {
@@ -110,8 +110,8 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     let token_transfer = create_transfer_from_msg(
         &deps.api,
         &token_canonical,
-        senderH,
-        contractH,
+        sender_h,
+        contract_h,
         *token_amount,
     )
     .unwrap();
@@ -140,8 +140,8 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     token_id: &Uint128,
     recipient: &HumanAddr,
 ) -> StdResult<HandleResponse<Empty>> {
-    let senderH = deps.api.human_address(&env.message.sender)?;
-    let contractH = deps.api.human_address(&env.contract.address)?;
+    let sender_h = deps.api.human_address(&env.message.sender)?;
+    let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
@@ -161,7 +161,7 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     });
     let token_address = pair_get(&deps.storage, *token_id)?;
     let token_transfer =
-        create_transfer_from_msg(&deps.api, &token_address, senderH, contractH, *amount).unwrap();
+        create_transfer_from_msg(&deps.api, &token_address, sender_h, contract_h, *amount).unwrap();
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
@@ -180,8 +180,8 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     token_id: &Uint128,
     recipient: &HumanAddr,
 ) -> StdResult<HandleResponse<Empty>> {
-    let senderH = deps.api.human_address(&env.message.sender)?;
-    let contractH = deps.api.human_address(&env.contract.address)?;
+    let sender_h = deps.api.human_address(&env.message.sender)?;
+    let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
@@ -199,7 +199,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     });
     let token_address = pair_get(&deps.storage, *token_id)?;
     let token_transfer =
-        create_transfer_from_msg(&deps.api, &token_address, contractH, senderH, *amount).unwrap();
+        create_transfer_from_msg(&deps.api, &token_address, contract_h, sender_h, *amount).unwrap();
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
@@ -327,7 +327,9 @@ mod tests {
     // State tests
     #[test]
     fn config_get_works() {
-        unimplemented!();
+        let mut deps = mock_dependencies(CANONICAL_LENGTH, &[]);
+        let config = config_get(&deps.storage);
+        println!("{:?}", config);
     }
 
     // Querier tests

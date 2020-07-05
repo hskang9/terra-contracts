@@ -3,10 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use maker::msg::{
-    ConfigResponse, ExchangeRateResponse, HandleMsg, InitMsg, QueryMsg, SimulateResponse,
-};
-use maker::state::State;
+use uniswap_v1::msg::*;
+use uniswap_v1::state::*;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -17,8 +15,8 @@ fn main() {
     export_schema(&schema_for!(InitMsg), &out_dir);
     export_schema(&schema_for!(HandleMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(State), &out_dir);
+    export_schema(&schema_for!(Config), &out_dir);
     export_schema(&schema_for!(ConfigResponse), &out_dir);
-    export_schema(&schema_for!(ExchangeRateResponse), &out_dir);
-    export_schema(&schema_for!(SimulateResponse), &out_dir);
+    export_schema(&schema_for!(PairResponse), &out_dir);
+    export_schema(&schema_for!(ReserveResponse), &out_dir);
 }

@@ -1,5 +1,5 @@
 [package]
-name = "uniswapv1"
+name = "uniswap_v1"
 version = "0.1.0"
 authors = ["Hyungsuk Kang <hskang9@gmail.com>"]
 edition = "2018"
