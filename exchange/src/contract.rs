@@ -332,5 +332,54 @@ mod tests {
         println!("{:?}", config);
     }
 
+    fn config_set_works() {
+        unimplemented!();
+    }
+
     // Querier tests
+
+    // Business logic tests
+
+    /// Test input price calculation
+    /// After execution, result will be:
+    /// TODO: add example calculation
+    fn get_input_price_works(
+        input_amount: Uint128,
+        input_reserve: Uint128,
+        output_reserve: Uint128,
+    ) {
+        unimplemented!();
+    }
+
+    /// Test output price calculation
+    /// After execution, result will be:
+    /// TODO: add example calculation
+    fn get_output_price_works(
+        output_amount: Uint128,
+        input_reserve: Uint128,
+        output_reserve: Uint128,
+    ) {
+        unimplemented!();
+    }
+
+    /// Test adding liquidity
+    /// After execution, result will be:
+    /// sender depositing Luna and token to the exchange contract
+    /// exchange contract getting token and luna bigger than minimum amount
+    fn try_add_liquidity_works(
+        luna_amount: &Uint128,
+        token_amount: &Uint128,
+        token_address: &HumanAddr,
+        token_id: &Uint128,
+    ) {
+        unimplemented!();
+    }
+
+    /// Test token to Luna swap
+    /// After execution, result will be:
+    /// sender having luna based on output price
+    /// exchange contract getting token and giving luna to the sender
+    fn try_swap_to_luna_works(amount: &Uint128, token_id: &Uint128, recipient: &HumanAddr) {
+        unimplemented!();
+    }
 }
