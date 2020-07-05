@@ -1,6 +1,7 @@
-# UniswapV1
+# Uniswap
 
-UniswapV1 implementation on cosmwasm
+A cosmwasm contract which provides liquidity between Luna and token contracts based on UniswapV1
+Unlike uniswapv1, this contract provides a platform where token contract owners can freely add liquidity to the token as long as it supports Transfer{} msg and deposits minimum amounts.
 
 # Exchange
 

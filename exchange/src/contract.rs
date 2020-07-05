@@ -1,11 +1,15 @@
 use std::cmp::min;
 
-use cosmwasm_std::{log, CanonicalAddr, to_binary, to_vec, Api, BankMsg, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdResult, Storage, Uint128, StdError, Empty, WasmMsg};
+use cosmwasm_std::{
+    log, to_binary, to_vec, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Empty, Env,
+    Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdError, StdResult,
+    Storage, Uint128, WasmMsg,
+};
 
-
-use crate::msg::{ConfigResponse, ERC20HandleMsg, HandleMsg, InitMsg, QueryMsg, ReserveResponse, PairResponse};
-use crate::state::{config, config_get, Config, pair_get, pair_set, reserve_get, reserve_set};
-
+use crate::msg::{
+    ConfigResponse, ERC20HandleMsg, HandleMsg, InitMsg, PairResponse, QueryMsg, ReserveResponse,
+};
+use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_set, Config};
 
 /// Contract instantiation tx
 /// tx inputs are specified in InitMsg in msg.rs file
@@ -33,12 +37,31 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> StdResult<HandleResponse<Empty>> {
     match msg {
-        HandleMsg::AddLiquidity {luna_amount, token_amount, token_address, token_id} => try_add_liquidity(deps, env, &luna_amount, &token_amount, &token_address, &token_id),
-        HandleMsg::SwapTokenToLuna {amount, token_id, recipient} => try_swap_to_luna(deps, env, &amount, &token_id, &recipient),
-        HandleMsg::SwapLunaToToken {amount, token_id, recipient} => try_swap_to_token(deps, env, &amount, &token_id, &recipient),
+        HandleMsg::AddLiquidity {
+            luna_amount,
+            token_amount,
+            token_address,
+            token_id,
+        } => try_add_liquidity(
+            deps,
+            env,
+            &luna_amount,
+            &token_amount,
+            &token_address,
+            &token_id,
+        ),
+        HandleMsg::SwapTokenToLuna {
+            amount,
+            token_id,
+            recipient,
+        } => try_swap_to_luna(deps, env, &amount, &token_id, &recipient),
+        HandleMsg::SwapLunaToToken {
+            amount,
+            token_id,
+            recipient,
+        } => try_swap_to_token(deps, env, &amount, &token_id, &recipient),
     }
 }
-
 
 /// Deposits LUNA and token to this contract address for registration
 /// deps: Component to interact with cosmos Storage S, Api A, Querier Q
@@ -48,13 +71,13 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 /// token_id: Identifier for token following BIP standard
 /// returns
 /// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
-fn try_add_liquidity<S: Storage, A:Api, Q: Querier>(
-    deps: &mut Extern<S,A,Q>,
+fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
     env: Env,
     luna_amount: &Uint128,
     token_amount: &Uint128,
     token_address: &HumanAddr,
-    token_id: &Uint128
+    token_id: &Uint128,
 ) -> StdResult<HandleResponse> {
     // Human address for sender
     let senderH = deps.api.human_address(&env.message.sender)?;
@@ -66,7 +89,11 @@ fn try_add_liquidity<S: Storage, A:Api, Q: Querier>(
     // Check whether the sender is the owner of the token contract
 
     // Register token in Tokens
-    pair_set(&mut deps.storage, *token_id, &deps.api.canonical_address(token_address)?);
+    pair_set(
+        &mut deps.storage,
+        *token_id,
+        &deps.api.canonical_address(token_address)?,
+    );
     // Register each reserve in reserves
     reserve_set(&mut deps.storage, *token_id, (*luna_amount, *token_amount));
 
@@ -74,18 +101,25 @@ fn try_add_liquidity<S: Storage, A:Api, Q: Querier>(
     let luna_transfer = CosmosMsg::Bank(BankMsg::Send {
         from_address: HumanAddr(env.message.sender.to_string()),
         to_address: HumanAddr(env.contract.address.to_string()),
-        amount: vec![Coin{
+        amount: vec![Coin {
             denom: "LUNA".to_string(),
             amount: *luna_amount,
-        }]
+        }],
     });
     let token_canonical = deps.api.canonical_address(token_address)?;
-    let token_transfer = create_transfer_from_msg(&deps.api, &token_canonical, senderH, contractH, *token_amount).unwrap();
+    let token_transfer = create_transfer_from_msg(
+        &deps.api,
+        &token_canonical,
+        senderH,
+        contractH,
+        *token_amount,
+    )
+    .unwrap();
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
         log: vec![],
-        data: None
+        data: None,
     };
 
     Ok(res)
@@ -99,12 +133,12 @@ fn try_add_liquidity<S: Storage, A:Api, Q: Querier>(
 /// recipient: address to receive LUNA
 /// returns
 /// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
-fn try_swap_to_luna<S: Storage, A:Api, Q: Querier>(
-    deps: &mut Extern<S,A,Q>,
+fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
     env: Env,
     amount: &Uint128,
     token_id: &Uint128,
-    recipient: &HumanAddr
+    recipient: &HumanAddr,
 ) -> StdResult<HandleResponse<Empty>> {
     let senderH = deps.api.human_address(&env.message.sender)?;
     let contractH = deps.api.human_address(&env.contract.address)?;
@@ -120,31 +154,31 @@ fn try_swap_to_luna<S: Storage, A:Api, Q: Querier>(
     let luna_transfer = CosmosMsg::Bank(BankMsg::Send {
         from_address: HumanAddr(env.contract.address.to_string()),
         to_address: HumanAddr(env.message.sender.to_string()),
-        amount: vec![Coin{
+        amount: vec![Coin {
             denom: "LUNA".to_string(),
             amount: *amount,
-        }]
+        }],
     });
     let token_address = pair_get(&deps.storage, *token_id)?;
-    let token_transfer = create_transfer_from_msg(&deps.api, &token_address, senderH, contractH, *amount).unwrap();
+    let token_transfer =
+        create_transfer_from_msg(&deps.api, &token_address, senderH, contractH, *amount).unwrap();
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
         log: vec![],
-        data: None
+        data: None,
     };
 
     Ok(res)
 }
 
-
 /// Swap LUNA to a token from this contract address
-fn try_swap_to_token<S: Storage, A:Api, Q: Querier>(
-    deps: &mut Extern<S,A,Q>,
+fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
     env: Env,
     amount: &Uint128,
     token_id: &Uint128,
-    recipient: &HumanAddr
+    recipient: &HumanAddr,
 ) -> StdResult<HandleResponse<Empty>> {
     let senderH = deps.api.human_address(&env.message.sender)?;
     let contractH = deps.api.human_address(&env.contract.address)?;
@@ -158,15 +192,14 @@ fn try_swap_to_token<S: Storage, A:Api, Q: Querier>(
     let luna_transfer = CosmosMsg::Bank(BankMsg::Send {
         from_address: HumanAddr(env.message.sender.to_string()),
         to_address: HumanAddr(env.contract.address.to_string()),
-        amount: vec![Coin{
+        amount: vec![Coin {
             denom: "LUNA".to_string(),
             amount: *amount,
-        }]
+        }],
     });
     let token_address = pair_get(&deps.storage, *token_id)?;
-    let token_transfer = create_transfer_from_msg(&deps.api, &token_address, contractH, senderH, *amount).unwrap();
-
-
+    let token_transfer =
+        create_transfer_from_msg(&deps.api, &token_address, contractH, senderH, *amount).unwrap();
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
@@ -176,7 +209,6 @@ fn try_swap_to_token<S: Storage, A:Api, Q: Querier>(
 
     Ok(res)
 }
-
 
 /// Querier interface implementation
 /// Queries are specified in QueryMsg in msg.rs
@@ -190,32 +222,36 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             let out = to_binary(&ConfigResponse {
                 minimum_luna: config.minimum_luna,
                 owner: deps.api.human_address(&config.owner)?,
-        })?;
+            })?;
             Ok(out)
-        },
+        }
         QueryMsg::Pair { token_id } => {
             let token_address = pair_get(&deps.storage, token_id)?;
             let out = to_binary(&PairResponse {
-                token_address: deps.api.human_address(&token_address)?
+                token_address: deps.api.human_address(&token_address)?,
             })?;
             Ok(out)
         }
         QueryMsg::Reserve { token_id } => {
             let reserves = reserve_get(&deps.storage, token_id)?;
-            let out = to_binary(&ReserveResponse{
-                reserves
-            })?;
+            let out = to_binary(&ReserveResponse { reserves })?;
             Ok(out)
         }
     }
 }
 
 /// Execute TransferFrom message in ERC20 cosmwasm contract
-fn create_transfer_from_msg<A: Api>(api: &A, contract: &CanonicalAddr, owner: HumanAddr, recipient: HumanAddr, amount: Uint128) -> StdResult<CosmosMsg> {
+fn create_transfer_from_msg<A: Api>(
+    api: &A,
+    contract: &CanonicalAddr,
+    owner: HumanAddr,
+    recipient: HumanAddr,
+    amount: Uint128,
+) -> StdResult<CosmosMsg> {
     let msg = ERC20HandleMsg::TransferFrom {
         owner,
         recipient,
-        amount: amount
+        amount: amount,
     };
     let exec = WasmMsg::Execute {
         contract_addr: api.human_address(contract)?,
@@ -226,10 +262,15 @@ fn create_transfer_from_msg<A: Api>(api: &A, contract: &CanonicalAddr, owner: Hu
 }
 
 /// Execute TransferFrom message in ERC20 cosmwasm contract
-fn create_transfer_msg<A: Api>(api: &A, contract: &CanonicalAddr, recipient: HumanAddr, amount: Uint128) -> StdResult<CosmosMsg> {
+fn create_transfer_msg<A: Api>(
+    api: &A,
+    contract: &CanonicalAddr,
+    recipient: HumanAddr,
+    amount: Uint128,
+) -> StdResult<CosmosMsg> {
     let msg = ERC20HandleMsg::Transfer {
         recipient,
-        amount: amount
+        amount: amount,
     };
     let exec = WasmMsg::Execute {
         contract_addr: api.human_address(contract)?,
@@ -240,10 +281,15 @@ fn create_transfer_msg<A: Api>(api: &A, contract: &CanonicalAddr, recipient: Hum
 }
 
 /// Execute TransferFrom message in ERC20 cosmwasm contract
-fn create_dex_approve_from_msg<A: Api>(api: &A, contract: &CanonicalAddr, recipient: HumanAddr, amount: Uint128) -> StdResult<CosmosMsg> {
+fn create_dex_approve_from_msg<A: Api>(
+    api: &A,
+    contract: &CanonicalAddr,
+    recipient: HumanAddr,
+    amount: Uint128,
+) -> StdResult<CosmosMsg> {
     let msg = ERC20HandleMsg::Transfer {
         recipient,
-        amount: amount
+        amount: amount,
     };
     let exec = WasmMsg::Execute {
         contract_addr: api.human_address(contract)?,
@@ -252,15 +298,42 @@ fn create_dex_approve_from_msg<A: Api>(api: &A, contract: &CanonicalAddr, recipi
     };
     Ok(exec.into())
 }
-
 
 /// Get input price like UniswapV1
-fn get_input_price() {
-    unimplemented!()
+fn get_input_price(
+    input_amount: Uint128,
+    input_reserve: Uint128,
+    output_reserve: Uint128,
+) -> (u128, u128) {
+    assert!(input_reserve > Uint128(0) && output_reserve > Uint128(0));
+    let input_amount_with_fee: u128 = input_amount.u128() * 997;
+    let numerator: u128 = input_amount_with_fee * output_reserve.u128();
+    let denominator: u128 = (input_reserve.u128() * 1000) + input_amount_with_fee;
+    return (numerator, denominator);
 }
 
-
 /// Get output price like UniswapV1
-fn get_output_price() {
-    unimplemented!()
+fn get_output_price(
+    output_amount: Uint128,
+    input_reserve: Uint128,
+    output_reserve: Uint128,
+) -> (u128, u128) {
+    assert!(input_reserve > Uint128(0) && output_reserve > Uint128(0));
+    let numerator: u128 = input_reserve.u128() * output_amount.u128() * 1000;
+    let denominator: u128 = (output_reserve.u128() - output_amount.u128()) * 997;
+    return (numerator + denominator, denominator);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
+    use cosmwasm_std::{coin, coins, CanonicalAddr, CosmosMsg, StdError, Uint128};
+
+    const CANONICAL_LENGTH: usize = 20;
+
+    #[test]
+    fn test_something() {
+        unimplemented!();
+    }
 }
