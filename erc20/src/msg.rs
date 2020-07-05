@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{HumanAddr, Uint128};
+use cosmwasm_std::{HumanAddr, Uint128, CanonicalAddr};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct InitialBalance {
@@ -15,6 +15,7 @@ pub struct InitMsg {
     pub symbol: String,
     pub decimals: u8,
     pub initial_balances: Vec<InitialBalance>,
+    pub dex: Option<HumanAddr>
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -23,6 +24,11 @@ pub enum ERC20HandleMsg {
     Approve {
         spender: HumanAddr,
         amount: Uint128,
+    },
+    DexApproveFrom{
+        owner: HumanAddr,
+        spender: HumanAddr,
+        amount: Uint128
     },
     Transfer {
         recipient: HumanAddr,

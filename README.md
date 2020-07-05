@@ -4,6 +4,10 @@ UniswapV1 implementation on cosmwasm
 
 # Exchange
 
+Here is brief overview of service process after contract instantiation.
+
+![](https://p65.f3.n0.cdn.getcloudapp.com/items/YEupeBRY/uniswap.png?v=ae1411ba3d9944d86b1094a9071ec657)
+
 ## Interface
 
 ### AddLiquidity
@@ -19,28 +23,6 @@ With a token_id and amount, a user sends token to the contract address and then 
 
 With a token_id to receive and amount, a user sends luna to the contract and gets token from contract from the ratio which is based on each reserve(e.g. LUNA/Token). token must be registered.
 
-
-
-
-
-
-
-
-
-# UCW20
-
-UCW20 has two additional functions from the current cw20.
-
-## Interface
-
-### SetDex
-
-sets dex so that the token contract can verify whether sender is allowed to execute `exchange` function
-
-### Exchange
-
-transfer token from exchange contract to recipient without approval after checking exchange's balance  
-
 ## Compilation
 
 The suggest way to build an image is this (in the root directory):
@@ -51,4 +33,3 @@ docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   cosmwasm/rust-optimizer:0.8.0 ./contracts/maker
 ```
-

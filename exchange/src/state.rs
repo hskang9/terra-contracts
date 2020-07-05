@@ -7,21 +7,28 @@ use cosmwasm_storage::{ReadonlyBucket, Bucket, singleton, singleton_read, Readon
 pub static CONFIG_KEY: &[u8] = b"config";
 pub static PAIR_KEY: &[u8] = b"pair";
 
+/// Config struct
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
+    /// total luna supply that the contract has
     pub total_luna_supply: Uint128,
+    /// minimum luna to deposit to provide liquidity
     pub minimum_luna: Uint128,
+    /// canonical address of the dex owner
     pub owner: CanonicalAddr,
 }
 
+/// Config singleton initialization
 pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, Config> {
     singleton(storage, CONFIG_KEY)
 }
 
+/// Get config
 pub fn config_get<S: Storage>(storage: &S) ->  StdResult<Config> {
     ReadonlySingleton::new(storage, CONFIG_KEY).load()
 }
 
+/// Set config
 pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()> {
     Singleton::new(storage, CONFIG_KEY).save(config)
 }
@@ -33,7 +40,7 @@ pub fn pair_get<S: Storage>(storage: &S, token_id: Uint128) -> StdResult<Canonic
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
         Ok(Some(address)) => address,
-        _ => Err(StdError::NotFound{kind: "token address is not registered for token_id".to_string(), backtrace: None}),
+        _ => Err(StdError::generic_err("token address is not registered for token_id")),
     }
 }
 
@@ -55,7 +62,7 @@ pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> StdResult<(Uin
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
         Ok(Some(reserves)) => reserves,
-        _ => Err(StdError::NotFound{kind: "Reserve does not exist for the token_id".to_string(), backtrace: None}),
+        _ => Err(StdError::generic_err("Reserve does not exist for the token_id")),
     }
 }
 
