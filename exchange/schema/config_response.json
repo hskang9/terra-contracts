@@ -1,19 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ConfigResponse",
-  "description": "Human readable state",
   "type": "object",
   "required": [
-    "ask",
-    "offer",
+    "minimum_luna",
     "owner"
   ],
   "properties": {
-    "ask": {
-      "type": "string"
-    },
-    "offer": {
-      "type": "string"
+    "minimum_luna": {
+      "$ref": "#/definitions/Uint128"
     },
     "owner": {
       "$ref": "#/definitions/HumanAddr"
@@ -21,6 +16,9 @@
   },
   "definitions": {
     "HumanAddr": {
+      "type": "string"
+    },
+    "Uint128": {
       "type": "string"
     }
   }

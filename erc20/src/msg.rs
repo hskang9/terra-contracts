@@ -14,8 +14,7 @@ pub struct InitMsg {
     pub name: String,
     pub symbol: String,
     pub decimals: u8,
-    pub initial_balances: Vec<InitialBalance>,
-    pub dex: Option<HumanAddr>
+    pub initial_balances: Vec<InitialBalance>
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
@@ -24,11 +23,6 @@ pub enum ERC20HandleMsg {
     Approve {
         spender: HumanAddr,
         amount: Uint128,
-    },
-    DexApproveFrom{
-        owner: HumanAddr,
-        spender: HumanAddr,
-        amount: Uint128
     },
     Transfer {
         recipient: HumanAddr,

@@ -3,48 +3,86 @@
   "title": "HandleMsg",
   "anyOf": [
     {
-      "description": "Buy will try to buy ask and sell offer, up to limit offer tokens, or current balance",
+      "description": "AddLiquidity will deposit LUNA and Token to add liquidity between them",
       "type": "object",
       "required": [
-        "buy"
+        "add_liquidity"
       ],
       "properties": {
-        "buy": {
+        "add_liquidity": {
           "type": "object",
+          "required": [
+            "luna_amount",
+            "token_address",
+            "token_amount",
+            "token_id"
+          ],
           "properties": {
-            "limit": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+            "luna_amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "token_address": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "token_amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "token_id": {
+              "$ref": "#/definitions/Uint128"
             }
           }
         }
       }
     },
     {
-      "description": "Sell is the reverse of buy. Selling ask and buying offer.",
       "type": "object",
       "required": [
-        "sell"
+        "swap_token_to_luna"
       ],
       "properties": {
-        "sell": {
+        "swap_token_to_luna": {
           "type": "object",
+          "required": [
+            "amount",
+            "recipient",
+            "token_id"
+          ],
           "properties": {
-            "limit": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "recipient": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "token_id": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "swap_luna_to_token"
+      ],
+      "properties": {
+        "swap_luna_to_token": {
+          "type": "object",
+          "required": [
+            "amount",
+            "recipient",
+            "token_id"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "recipient": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "token_id": {
+              "$ref": "#/definitions/Uint128"
             }
           }
         }
@@ -52,6 +90,9 @@
     }
   ],
   "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    },
     "Uint128": {
       "type": "string"
     }

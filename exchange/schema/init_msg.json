@@ -3,14 +3,26 @@
   "title": "InitMsg",
   "type": "object",
   "required": [
-    "ask",
-    "offer"
+    "minimum_luna",
+    "owner"
   ],
   "properties": {
-    "ask": {
+    "minimum_luna": {
+      "$ref": "#/definitions/Uint128"
+    },
+    "owner": {
+      "$ref": "#/definitions/CanonicalAddr"
+    }
+  },
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
       "type": "string"
     },
-    "offer": {
+    "CanonicalAddr": {
+      "$ref": "#/definitions/Binary"
+    },
+    "Uint128": {
       "type": "string"
     }
   }

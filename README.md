@@ -36,6 +36,8 @@ docker run --rm -v "$(pwd)":/code \
   cosmwasm/rust-optimizer:0.8.0 ./contracts/uniswap_v1
 ```
 
+
+
 # UCW20
 
 UCW20 has two additional functions from the current cw20.
@@ -56,7 +58,47 @@ The suggest way to build an image is this (in the root directory):
 
 ```sh
 docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/contracts/maker/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.8.0 ./contracts/maker
+--mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/contracts/erc20/target \
+--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+cosmwasm/rust-optimizer:0.8.0 ./contracts/erc20
 ```
+
+# Test envs
+
+## Accounts
+
+Account1(Mnemonic)
+
+satisfy adjust timber high purchase tuition stool faith fine install that you unaware feed domain license impose boss human eager hat rent enjoy dawn
+
+Account2(Mnemonic) 
+
+illness wing believe zone chair very glove predict isolate polar bulb slush
+terra1a8fz0g4r64plsww6fflqzy7at2fv96629k5fre
+
+## Contract deployment
+
+### Erc20
+```sh
+terracli tx wasm instantiate 1 '{"name":"MyTerraToken","symbol":"MTT", "decimals": 18, "initial_balances":[{"address":"terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8","amount":"10000000"},{"address": "terra1a8fz0g4r64plsww6fflqzy7at2fv96629k5fre", "amount" : "10000000"}]}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```
+
+contract_address: terra1pg606jw68d9mnh9czrgm7celc3rq9x5wrvj7gl
+
+
+### UniswapV1
+
+```sh
+terracli tx wasm instantiate 2 '{"minimum_luna": "0", "owner": "terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8"}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```
+
+
+
+uniswap v1 contract address: terra10pyejy66429refv3g35g2t7am0was7ya7kz2a4
+owner address: terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8
+
+
+1. execute add_liquidity
+
+terracli tx wasm execute <uniswap contract address> '{"add_liquidity": { "luna_amount": "100", "token_address": <token_contract_address>, "token_amount": "10000", "token_id": "1"}}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block 
+

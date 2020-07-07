@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "description": "Config struct",
+  "type": "object",
+  "required": [
+    "minimum_luna",
+    "owner",
+    "total_luna_supply"
+  ],
+  "properties": {
+    "minimum_luna": {
+      "description": "minimum luna to deposit to provide liquidity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
+    "owner": {
+      "description": "canonical address of the dex owner",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CanonicalAddr"
+        }
+      ]
+    },
+    "total_luna_supply": {
+      "description": "total luna supply that the contract has",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "CanonicalAddr": {
+      "$ref": "#/definitions/Binary"
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

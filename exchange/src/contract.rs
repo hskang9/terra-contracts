@@ -84,9 +84,20 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     // Human address for token contract
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check luna_amount > minimumLuna
+    let config = config_get(&deps.storage)?;
+    if *luna_amount < config.minimum_luna {
+        return Err(StdError::generic_err(format!("Insufficient luna deposit: luna_amount={}, required={}", luna_amount, config.minimum_luna)));
+    }
 
     // Check whether token is already registered
+    if !pair_get(&deps.storage, *token_id).is_err() {
+        return Err(StdError::generic_err("Token is already registered"));
+    }
+
     // Check whether the sender is the owner of the token contract
+    if config.owner != env.message.sender {
+        return Err(StdError::unauthorized());
+    }
 
     // Register token in Tokens
     pair_set(
@@ -99,20 +110,24 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
 
     // Send msg to send each asset to contract address
     let luna_transfer = CosmosMsg::Bank(BankMsg::Send {
-        from_address: HumanAddr(env.message.sender.to_string()),
-        to_address: HumanAddr(env.contract.address.to_string()),
+        from_address: sender_h,
+        to_address: contract_h.clone(),
         amount: vec![Coin {
-            denom: "LUNA".to_string(),
+            denom: "uluna".to_string(),
             amount: *luna_amount,
         }],
     });
     let token_canonical = deps.api.canonical_address(token_address)?;
     let token_transfer =
-        create_transfer_msg(&deps.api, &token_canonical, contract_h, *token_amount)?;
+        create_transfer_msg(&deps.api, &token_canonical, contract_h.clone(), *token_amount)?;
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
-        log: vec![],
+        log: vec![log("action", "add_liquidity"),
+                  log("from", deps.api.human_address(&env.message.sender)?),
+                  log("to", contract_h),
+                  log("luna_amount", *luna_amount),
+                  log("token_amount", *token_amount)],
         data: None,
     };
 
@@ -122,7 +137,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
 /// Swap LUNA to a token from this contract address
 /// deps: Component to interact with cosmos Storage S, Api A, Querier Q
 /// env: Environment of tx input
-/// amount: amount of token to swp
+/// amount: amount of token to swap
 /// token_id: Identifier for token in BIP standard
 /// recipient: address to receive LUNA
 /// returns
@@ -137,30 +152,42 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
+    if pair_get(&deps.storage, *token_id).is_err() {
+        return Err(StdError::generic_err("Token is not registered yet"));
+    }
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
-
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *token_id)?;
+    let token_reserve: Uint128 = reserves.1;
+    let luna_reserve: Uint128 = reserves.0;
+    let luna_bought: Uint128 = get_input_price(*amount, token_reserve, luna_reserve)?;
     // Change reserve amount
+    let new_luna_reserve: Uint128 = token_reserve + *amount;
+    let new_token_reserve: Uint128 = (luna_reserve - luna_bought)?;
+    reserve_set(&mut deps.storage, *token_id, (new_luna_reserve, new_token_reserve))?;
 
     // Get token and send luna to recipient address
-    // Send msg to send each asset to contract address
+    let token_address = pair_get(&deps.storage, *token_id)?;
+    let token_transfer =
+        create_transfer_msg(&deps.api, &token_address, contract_h.clone(),  *amount)?;
 
     let luna_transfer = BankMsg::Send {
-        from_address: HumanAddr(env.contract.address.to_string()),
-        to_address: HumanAddr(env.message.sender.to_string()),
+        from_address: contract_h,
+        to_address: recipient.clone(),
         amount: vec![Coin {
-            denom: "LUNA".to_string(),
-            amount: *amount,
+            denom: "uluna".to_string(),
+            amount: luna_bought,
         }],
     }
     .into();
-    let token_address = pair_get(&deps.storage, *token_id)?;
-    let token_transfer =
-        create_transfer_from_msg(&deps.api, &token_address, sender_h, contract_h, *amount)?;
 
     let res = HandleResponse {
-        messages: vec![luna_transfer, token_transfer],
-        log: vec![],
+        messages: vec![token_transfer, luna_transfer],
+        log: vec![log("action", "swap_to_luna"),
+                  log("from", deps.api.human_address(&env.message.sender)?),
+                  log("to", recipient),
+                  log("input_amount", *amount),
+                  log("luna_amount", luna_bought)],
         data: None,
     };
 
@@ -280,6 +307,8 @@ fn create_transfer_msg<A: Api>(
 }
 
 /// Get input price like UniswapV1
+/// price follows the equation (x + delta_x) * (y) = k_0
+/// fees are excluded for now
 /// input_amount: amount of asset to exchange from
 /// input_reserve: reserve of asset to exchange from in Pair state
 /// output_reserve: reserve of asset to exchange to in Pair state
@@ -289,15 +318,20 @@ fn get_input_price(
     input_amount: Uint128,
     input_reserve: Uint128,
     output_reserve: Uint128,
-) -> (u128, u128) {
-    assert!(input_reserve > Uint128(0) && output_reserve > Uint128(0));
-    let input_amount_with_fee: u128 = input_amount.u128() * 997;
-    let numerator: u128 = input_amount_with_fee * output_reserve.u128();
-    let denominator: u128 = (input_reserve.u128() * 1000) + input_amount_with_fee;
-    return (numerator, denominator);
+) -> StdResult<Uint128> {
+    if input_reserve > Uint128(0) && output_reserve > Uint128(0) {
+        let numerator: u128 = input_amount.u128() * output_reserve.u128();
+        let denominator: u128 = (input_reserve.u128()) + input_amount.u128();
+        return Ok(Uint128(numerator / denominator));
+    }
+    else {
+        return Err(StdError::generic_err(format!("invalid reserves luna:{}, token:{}", output_reserve, input_reserve)));
+    }
 }
 
 /// Get output price like UniswapV1
+/// price follows the equation (x)(y-delta_y) = k_0
+/// fees are excluded for now
 /// output_amount: amount of asset to exchange to
 /// input_reserve: reserve of asset to exchange from in Pair state
 /// output_reserve: reserve of asset to exchange to in Pair state
@@ -307,11 +341,11 @@ fn get_output_price(
     output_amount: Uint128,
     input_reserve: Uint128,
     output_reserve: Uint128,
-) -> (u128, u128) {
+) -> Uint128 {
     assert!(input_reserve > Uint128(0) && output_reserve > Uint128(0));
-    let numerator: u128 = input_reserve.u128() * output_amount.u128() * 1000;
-    let denominator: u128 = (output_reserve.u128() - output_amount.u128()) * 997;
-    return (numerator + denominator, denominator); // (numerator / denominator) + 1
+    let numerator: u128 = input_reserve.u128() * output_amount.u128();
+    let denominator: u128 = output_reserve.u128() - output_amount.u128();
+    return Uint128(numerator + denominator / denominator.clone()); // (numerator / denominator) + 1
 }
 
 #[cfg(test)]
