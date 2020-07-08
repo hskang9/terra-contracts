@@ -7,7 +7,7 @@ use cosmwasm_std::{HumanAddr, Uint128, CanonicalAddr};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
     pub minimum_luna: Uint128,
-    pub owner: CanonicalAddr,
+    pub owner: HumanAddr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

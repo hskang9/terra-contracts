@@ -58,13 +58,3 @@
     }
   }
 }
-
-{
-  "add_liquidity":
-  {
-    "luna_amount": "100",
-    "token_address": "terra1pg606jw68d9mnh9czrgm7celc3rq9x5wrvj7gl",
-    "token_amount": "10000",
-    "token_id": "1"
-  }
-},

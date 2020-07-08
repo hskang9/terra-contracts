@@ -21,7 +21,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     let state = Config {
         total_luna_supply: Uint128(0),
         minimum_luna: msg.minimum_luna,
-        owner: msg.owner,
+        owner: deps.api.canonical_address(&msg.owner)?,
     };
 
     config(&mut deps.storage).save(&state)?;
@@ -64,7 +64,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 }
 
 /// Deposits LUNA and token to this contract address for registration
-/// deps: Component to interact with cosmos Storage S, Api A, Querier Q
+/// deps: dependancies for cosmos SDK:  Storage S, Api A, Querier Q
 /// env: environment of the tx input
 /// luna_amount: Amount of Luna to deposit to register token in Liquidity provider contract(a.k.a. uniswap)
 /// token_amount: Amount of token to deposit to register token in Liquidity provider contract(a.k.a. uniswap)
@@ -83,46 +83,43 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     // Human address for token contract
     let contract_h = deps.api.human_address(&env.contract.address)?;
+    let token_canonical = deps.api.canonical_address(token_address)?;
+
     // Check luna_amount > minimumLuna
     let config = config_get(&deps.storage)?;
-    if *luna_amount < config.minimum_luna {
+    if *luna_amount <= config.minimum_luna {
         return Err(StdError::generic_err(format!("Insufficient luna deposit: luna_amount={}, required={}", luna_amount, config.minimum_luna)));
     }
 
     // Check whether token is already registered
-    if !pair_get(&deps.storage, *token_id).is_err() {
-        return Err(StdError::generic_err("Token is already registered"));
+    let registered = pair_get(&deps.storage, *token_id);
+    if registered.is_some() {
+        let registered_h = deps.api.human_address(&registered.unwrap());
+        return Err(StdError::generic_err(format!("Token is already registered token_id: {}, registered_address: {:?}", *token_id, registered_h)));
     }
 
     // Check whether the sender is the owner of the token contract
-    if config.owner != env.message.sender {
-        return Err(StdError::unauthorized());
+    if config.owner != env.message.sender
+    {
+        return Err(StdError::generic_err(format!("You are not authorized to execute this function. owner: {}, sender: {}", config.owner, env.message.sender)));
     }
 
     // Register token in Tokens
     pair_set(
         &mut deps.storage,
         *token_id,
-        &deps.api.canonical_address(token_address)?,
+        &token_canonical,
     )?;
     // Register each reserve in reserves
     reserve_set(&mut deps.storage, *token_id, (*luna_amount, *token_amount))?;
 
-    // Send msg to send each asset to contract address
-    let luna_transfer = CosmosMsg::Bank(BankMsg::Send {
-        from_address: sender_h,
-        to_address: contract_h.clone(),
-        amount: vec![Coin {
+    let token_transfer_from =
+        create_transfer_from_msg(&deps.api, &token_canonical, sender_h.clone(), contract_h.clone(), *token_amount, Some(vec![Coin {
             denom: "uluna".to_string(),
             amount: *luna_amount,
-        }],
-    });
-    let token_canonical = deps.api.canonical_address(token_address)?;
-    let token_transfer =
-        create_transfer_msg(&deps.api, &token_canonical, contract_h.clone(), *token_amount)?;
-
+        }]))?;
     let res = HandleResponse {
-        messages: vec![luna_transfer, token_transfer],
+        messages: vec![token_transfer_from],
         log: vec![log("action", "add_liquidity"),
                   log("from", deps.api.human_address(&env.message.sender)?),
                   log("to", contract_h),
@@ -134,8 +131,8 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     Ok(res)
 }
 
-/// Swap LUNA to a token from this contract address
-/// deps: Component to interact with cosmos Storage S, Api A, Querier Q
+/// Swap LUNA to a token from this contract address with sell order
+/// deps: dependancies for cosmos SDK:  Storage S, Api A, Querier Q
 /// env: Environment of tx input
 /// amount: amount of token to swap
 /// token_id: Identifier for token in BIP standard
@@ -152,24 +149,24 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
-    if pair_get(&deps.storage, *token_id).is_err() {
+    if pair_get(&deps.storage, *token_id).is_none() {
         return Err(StdError::generic_err("Token is not registered yet"));
     }
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
-    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *token_id)?;
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *token_id).unwrap();
     let token_reserve: Uint128 = reserves.1;
     let luna_reserve: Uint128 = reserves.0;
     let luna_bought: Uint128 = get_input_price(*amount, token_reserve, luna_reserve)?;
     // Change reserve amount
-    let new_luna_reserve: Uint128 = token_reserve + *amount;
-    let new_token_reserve: Uint128 = (luna_reserve - luna_bought)?;
+    let new_token_reserve: Uint128 = token_reserve + *amount;
+    let new_luna_reserve: Uint128 = (luna_reserve - luna_bought)?;
     reserve_set(&mut deps.storage, *token_id, (new_luna_reserve, new_token_reserve))?;
 
     // Get token and send luna to recipient address
-    let token_address = pair_get(&deps.storage, *token_id)?;
-    let token_transfer =
-        create_transfer_msg(&deps.api, &token_address, contract_h.clone(),  *amount)?;
+    let token_address = pair_get(&deps.storage, *token_id).unwrap();
+    let token_transfer_from =
+        create_transfer_from_msg(&deps.api, &token_canonical, sender_h.clone(), contract_h.clone(), *amount, None)?;
 
     let luna_transfer = BankMsg::Send {
         from_address: contract_h,
@@ -194,9 +191,14 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     Ok(res)
 }
 
-/// Swap LUNA to a token from this contract address
-/// NOTICE: This is currently not possible due to absence of sender specification for contract in cosmwasm
-/// check issue #420
+/// Swap Luna to a token from this contract address with sell order
+/// deps: dependancies for cosmos SDK:  Storage S, Api A, Querier Q
+/// env: Environment of tx input
+/// amount: amount of Luna to swap
+/// token_id: Identifier for token in BIP standard
+/// recipient: address to receive Token
+/// returns
+/// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
 fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -207,28 +209,32 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
+    if pair_get(&deps.storage, *token_id).is_none() {
+        return Err(StdError::generic_err("Token is not registered yet"));
+    }
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *token_id).unwrap();
+    let token_reserve: Uint128 = reserves.1;
+    let luna_reserve: Uint128 = reserves.0;
+    let input_reserve: Uint128 = (luna_reserve - *amount).unwrap();
+    let tokens_bought: Uint128 = get_input_price(*amount, input_reserve, token_reserve)?;
+
 
     // Change reserve amount
+    let new_luna_reserve: Uint128 = luna_reserve + *amount;
+    let new_token_reserve: Uint128 = (token_reserve - token_bought).unwrap();
+    reserve_set(&mut deps.storage, *token_id, (new_luna_reserve, new_token_reserve))?;
 
     // Get token and send luna to recipient address
-    /*
-    let luna_transfer = BankMsg::Send {
-        from_address: HumanAddr(env.message.sender.to_string()),
-        to_address: HumanAddr(env.contract.address.to_string()),
-        amount: vec![Coin {
-            denom: "LUNA".to_string(),
-            amount: *amount,
-        }],
-    }
-    .into();
-    let token_address = pair_get(&deps.storage, *token_id)?;
     let token_transfer =
-        create_transfer_from_msg(&deps.api, &token_address, contract_h, sender_h, *amount)?;
-    */
+        create_transfer_msg(&deps.api, &token_address, sender_h, tokens_bought, Some(vec![Coin {
+            denom: "uluna".to_string(),
+            amount: *amount,
+        }]))?;
+
     let res = HandleResponse {
-        messages: vec![/*luna_transfer, token_transfer*/],
+        messages: vec![token_transfer],
         log: vec![],
         data: None,
     };
@@ -252,14 +258,22 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             Ok(out)
         }
         QueryMsg::Pair { token_id } => {
-            let token_address = pair_get(&deps.storage, token_id)?;
+            let token_address: HumanAddr = match pair_get(&deps.storage, token_id) {
+                Some(n) => {
+                    deps.api.human_address(&n)?
+                }
+                None => {
+                    HumanAddr::from("0")
+                }
+            };
+
             let out = to_binary(&PairResponse {
-                token_address: deps.api.human_address(&token_address)?,
+                token_address,
             })?;
             Ok(out)
         }
         QueryMsg::Reserve { token_id } => {
-            let reserves = reserve_get(&deps.storage, token_id)?;
+            let reserves: (Uint128,  Uint128) = reserve_get(&deps.storage, token_id).unwrap();
             let out = to_binary(&ReserveResponse { reserves })?;
             Ok(out)
         }
@@ -273,16 +287,24 @@ fn create_transfer_from_msg<A: Api>(
     owner: HumanAddr,
     recipient: HumanAddr,
     amount: Uint128,
+    send: Option<Vec<Coin>>
 ) -> StdResult<CosmosMsg> {
     let msg = ERC20HandleMsg::TransferFrom {
         owner,
         recipient,
         amount: amount,
     };
-    let exec = WasmMsg::Execute {
-        contract_addr: api.human_address(contract)?,
-        msg: to_binary(&msg)?,
-        send: vec![],
+    let exec = match send {
+        Some(n) => WasmMsg::Execute {
+            contract_addr: api.human_address(contract)?,
+            msg: to_binary(&msg)?,
+            send: n
+        },
+        None => WasmMsg::Execute {
+            contract_addr: api.human_address(contract)?,
+            msg: to_binary(&msg)?,
+            send: vec![],
+        }
     };
     Ok(exec.into())
 }
@@ -293,10 +315,11 @@ fn create_transfer_msg<A: Api>(
     contract: &CanonicalAddr,
     recipient: HumanAddr,
     amount: Uint128,
+    send: Option<Vec<Coin>>
 ) -> StdResult<CosmosMsg> {
     let msg = ERC20HandleMsg::Transfer {
         recipient,
-        amount: amount,
+        amount,
     };
     let exec = WasmMsg::Execute {
         contract_addr: api.human_address(contract)?,
@@ -306,7 +329,7 @@ fn create_transfer_msg<A: Api>(
     Ok(exec.into())
 }
 
-/// Get input price like UniswapV1
+/// Get input price like UniswapV1 for sell order
 /// price follows the equation (x + delta_x) * (y) = k_0
 /// fees are excluded for now
 /// input_amount: amount of asset to exchange from
@@ -329,14 +352,16 @@ fn get_input_price(
     }
 }
 
-/// Get output price like UniswapV1
+/// Get output price like UniswapV1 for buy order
 /// price follows the equation (x)(y-delta_y) = k_0
 /// fees are excluded for now
+/// TODO: add fee logic and implement buy order
 /// output_amount: amount of asset to exchange to
 /// input_reserve: reserve of asset to exchange from in Pair state
 /// output_reserve: reserve of asset to exchange to in Pair state
 ///
 /// returns (u128, u128) as (numerator, denominator)
+///
 fn get_output_price(
     output_amount: Uint128,
     input_reserve: Uint128,
@@ -374,7 +399,11 @@ mod tests {
     }
 
     fn pair_set_works() {
-        unimplemented!();
+        pair_set(
+            &mut deps.storage,
+            *token_id,
+            &deps.api.canonical_address(token_address)?,
+        )?;
     }
 
     fn reserve_get_works() {

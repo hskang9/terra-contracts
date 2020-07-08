@@ -29,7 +29,7 @@ With a token_id to receive and amount, a user sends luna to the contract and get
 
 The suggest way to build an image is this (in the root directory):
 
-```sh
+```shell script
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/contracts/uniswap_v1/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
@@ -56,7 +56,7 @@ the token owner approves from dex contract to trader with certain amount for swa
 
 The suggest way to build an image is this (in the root directory):
 
-```sh
+```shell script
 docker run --rm -v "$(pwd)":/code \
 --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/contracts/erc20/target \
 --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
@@ -79,26 +79,80 @@ terra1a8fz0g4r64plsww6fflqzy7at2fv96629k5fre
 ## Contract deployment
 
 ### Erc20
-```sh
-terracli tx wasm instantiate 1 '{"name":"MyTerraToken","symbol":"MTT", "decimals": 18, "initial_balances":[{"address":"terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8","amount":"10000000"},{"address": "terra1a8fz0g4r64plsww6fflqzy7at2fv96629k5fre", "amount" : "10000000"}]}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```shell script
+terracli tx wasm store cw_erc20.wasm --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
 ```
 
-contract_address: terra1pg606jw68d9mnh9czrgm7celc3rq9x5wrvj7gl
+```shell script
+terracli tx wasm instantiate 13 '{"name":"MyTerraToken","symbol":"MTT", "decimals": 18, "initial_balances":[{"address":"terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8","amount":"10000000"},{"address": "terra1a8fz0g4r64plsww6fflqzy7at2fv96629k5fre", "amount" : "10000000"}]}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```
+
+contract_address: terra17twkkz0xdr9kzcwptzs7ew8y8tw936twkhpmu8
+
+
+
+1. test transfer
+```shell script
+terracli tx wasm execute terra18x4r44npdzrk0k9pzvy7h4d38ep3rmadsewzsh '{"transfer":{"amount":"100000","recipient":"terra1uq0haxdf5cgg7s76frd3rtnr0trzaazyy00jqf"}}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```
+
+2. test balances
+```shell script
+terracli query wasm contract-store  terra18x4r44npdzrk0k9pzvy7h4d38ep3rmadsewzsh '{"balance":{"address":"terra1uq0haxdf5cgg7s76frd3rtnr0trzaazyy00jqf"}}'
+```
+
+
 
 
 ### UniswapV1
 
-```sh
-terracli tx wasm instantiate 2 '{"minimum_luna": "0", "owner": "terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8"}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```shell script
+terracli tx wasm store uniswap_v1.wasm --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```
+
+```shell script
+terracli tx wasm instantiate 21 '{"minimum_luna": "0", "owner": "terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8"}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
 ```
 
 
 
-uniswap v1 contract address: terra10pyejy66429refv3g35g2t7am0was7ya7kz2a4
+uniswap v1 contract address:  terra1ya352k9svdcspkw43l5kpvmg9ecatkcg764tsr
 owner address: terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8
 
+0. send luna to contract 
+```shell script
+terracli tx send test1 terra1ya352k9svdcspkw43l5kpvmg9ecatkcg764tsr 30000uluna --chain-id=localterra
+```
 
-1. execute add_liquidity
+1. test allowance
+```shell script
+terracli tx wasm execute terra18x4r44npdzrk0k9pzvy7h4d38ep3rmadsewzsh '{"approve":{"amount":"100000","spender":"terra1ya352k9svdcspkw43l5kpvmg9ecatkcg764tsr"}}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block
+```
 
+
+2. execute add_liquidity
+```shell script
 terracli tx wasm execute <uniswap contract address> '{"add_liquidity": { "luna_amount": "100", "token_address": <token_contract_address>, "token_amount": "10000", "token_id": "1"}}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block 
+```
 
+terracli tx wasm execute terra1ya352k9svdcspkw43l5kpvmg9ecatkcg764tsr '{"add_liquidity": { "luna_amount": "100", "token_address": "terra18x4r44npdzrk0k9pzvy7h4d38ep3rmadsewzsh", "token_amount": "10000", "token_id": "1"}}' --from test1 --chain-id=localterra --gas=auto --broadcast-mode=block 
+
+
+2. test pairs and reserves
+
+```shell script
+terracli query wasm contract-store terra1ya352k9svdcspkw43l5kpvmg9ecatkcg764tsr '{"pair":{"token_id":"1"}}'
+```
+
+3. check balance 
+```shell script
+terracli query account terra1dcegyrekltswvyy0xy69ydgxn9x8x32zdtapd8
+```
+```shell script
+terracli query account terra1m5xqrvpdlrj0ntlswf0zh75887df5eq2wg2pky
+```
+
+```shell script
+terracli query wasm contract-store  terra18x4r44npdzrk0k9pzvy7h4d38ep3rmadsewzsh '{"balance":{"address":"terra1l3422gmvgv4zjrp28s7fukr92wj3seqacgq75u"}}'
+
+```

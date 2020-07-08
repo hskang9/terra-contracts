@@ -282,8 +282,8 @@ fn perform_transfer<T: Storage>(
     let mut from_balance = read_u128(&balances_store, from.as_slice())?;
     if from_balance < amount {
         return Err(StdError::generic_err(format!(
-            "Insufficient funds: balance={}, required={}",
-            from_balance, amount
+
+            "Insufficient funds: sender={}, balance={}, required={}", HumanAddr::from(from.to_string()), from_balance, amount
         )));
     }
     from_balance -= amount;

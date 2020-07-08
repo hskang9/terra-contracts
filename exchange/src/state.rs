@@ -6,6 +6,7 @@ use cosmwasm_storage::{ReadonlyBucket, Bucket, singleton, ReadonlySingleton, Sin
 
 pub static CONFIG_KEY: &[u8] = b"config";
 pub static PAIR_KEY: &[u8] = b"pair";
+pub static RESERVE_KEY: &[u8] = b"reserve";
 
 /// Config struct
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -36,11 +37,11 @@ pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()>
 /// Get pair between LUNA and token
 /// token_id: token id in bip standard
 /// address: token contract address
-pub fn pair_get<S: Storage>(storage: &S, token_id: Uint128) -> StdResult<CanonicalAddr> {
+pub fn pair_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<CanonicalAddr> {
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
-        Ok(Some(address)) => address,
-        _ => Err(StdError::generic_err("token address is not registered for token_id")),
+        Ok(Some(address)) => Some(address),
+        _ => None,
     }
 }
 
@@ -53,16 +54,19 @@ pub fn pair_set<S: Storage>(
     address: &CanonicalAddr
 ) -> StdResult<()> {
     let serialized = token_id.u128().to_le_bytes();
-    Bucket::new(PAIR_KEY, storage).save(&serialized, address)
+    match Bucket::new(PAIR_KEY, storage).save(&serialized, address) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, address)))
+    }
 }
 
 /// Get reserve between LUNA and token
 /// token_id: token id in bip standard
-pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> StdResult<(Uint128, Uint128)> {
+pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<(Uint128, Uint128)> {
     let serialized = token_id.u128().to_le_bytes();
-    match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
-        Ok(Some(reserves)) => reserves,
-        _ => Err(StdError::generic_err("Reserve does not exist for the token_id")),
+    match ReadonlyBucket::new(RESERVE_KEY, storage).may_load(&serialized) {
+        Ok(Some(reserves)) => Some(reserves),
+        _ => None,
     }
 }
 
@@ -75,5 +79,10 @@ pub fn reserve_set<S: Storage>(
     reserves: (Uint128, Uint128)
 ) -> StdResult<()> {
     let serialized = token_id.u128().to_le_bytes();
-    Bucket::new(PAIR_KEY, storage).save(&serialized, &reserves)
+    match Bucket::new(RESERVE_KEY, storage).save(&serialized, &reserves) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, reserves)))
+    }
 }
+
+
