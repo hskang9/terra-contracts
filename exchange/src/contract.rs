@@ -166,7 +166,7 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     // Get token and send luna to recipient address
     let token_address = pair_get(&deps.storage, *token_id).unwrap();
     let token_transfer_from =
-        create_transfer_from_msg(&deps.api, &token_canonical, sender_h.clone(), contract_h.clone(), *amount, None)?;
+        create_transfer_from_msg(&deps.api, &token_address, sender_h.clone(), contract_h.clone(), *amount, None)?;
 
     let luna_transfer = BankMsg::Send {
         from_address: contract_h,
@@ -179,7 +179,7 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     .into();
 
     let res = HandleResponse {
-        messages: vec![token_transfer, luna_transfer],
+        messages: vec![token_transfer_from, luna_transfer],
         log: vec![log("action", "swap_to_luna"),
                   log("from", deps.api.human_address(&env.message.sender)?),
                   log("to", recipient),
@@ -209,7 +209,8 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
-    if pair_get(&deps.storage, *token_id).is_none() {
+    let token_address: Option<CanonicalAddr> = pair_get(&deps.storage, *token_id);
+    if token_address.is_none() {
         return Err(StdError::generic_err("Token is not registered yet"));
     }
 
@@ -223,12 +224,12 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
 
     // Change reserve amount
     let new_luna_reserve: Uint128 = luna_reserve + *amount;
-    let new_token_reserve: Uint128 = (token_reserve - token_bought).unwrap();
+    let new_token_reserve: Uint128 = (token_reserve - tokens_bought)?;
     reserve_set(&mut deps.storage, *token_id, (new_luna_reserve, new_token_reserve))?;
 
     // Get token and send luna to recipient address
     let token_transfer =
-        create_transfer_msg(&deps.api, &token_address, sender_h, tokens_bought, Some(vec![Coin {
+        create_transfer_msg(&deps.api, &token_address.unwrap(), sender_h, tokens_bought, Some(vec![Coin {
             denom: "uluna".to_string(),
             amount: *amount,
         }]))?;
