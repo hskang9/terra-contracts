@@ -331,7 +331,7 @@ fn create_transfer_msg<A: Api>(
 }
 
 /// Get input price like UniswapV1 for sell order
-/// price follows the equation (x + delta_x) * (y) = k_0
+/// sell order means selling assets with following equation x*y = k
 /// fees are excluded for now
 /// input_amount: amount of asset to exchange from
 /// input_reserve: reserve of asset to exchange from in Pair state
@@ -354,7 +354,7 @@ fn get_input_price(
 }
 
 /// Get output price like UniswapV1 for buy order
-/// price follows the equation (x)(y-delta_y) = k_0
+/// buy order is a limit order to buy assets
 /// fees are excluded for now
 /// TODO: add fee logic and implement buy order
 /// output_amount: amount of asset to exchange to
@@ -362,7 +362,6 @@ fn get_input_price(
 /// output_reserve: reserve of asset to exchange to in Pair state
 ///
 /// returns (u128, u128) as (numerator, denominator)
-///
 fn get_output_price(
     output_amount: Uint128,
     input_reserve: Uint128,
