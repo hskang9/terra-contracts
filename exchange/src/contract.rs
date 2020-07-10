@@ -383,60 +383,17 @@ mod tests {
     const CANONICAL_LENGTH: usize = 20;
 
     // State tests
-    #[test]
-    fn config_get_works() {
-        let mut deps = mock_dependencies(CANONICAL_LENGTH, &[]);
-        let config = config_get(&deps.storage);
-        println!("{:?}", config);
-    }
-
-    fn config_set_works() {
-        unimplemented!();
-    }
-
-    fn pair_get_works() {
-        unimplemented!();
-    }
-
-    fn pair_set_works() {
-        pair_set(
-            &mut deps.storage,
-            *token_id,
-            &deps.api.canonical_address(token_address)?,
-        )?;
-    }
-
-    fn reserve_get_works() {
-        unimplemented!();
-    }
-
-    fn reserve_set_works() {
-        unimplemented!();
-    }
-
-    // Querier tests
-
-    // Business logic tests
-
     /// Test input price calculation
     /// After execution, result will be:
     /// TODO: add example calculation
-    fn get_input_price_works(
-        input_amount: Uint128,
-        input_reserve: Uint128,
-        output_reserve: Uint128,
-    ) {
+    fn get_input_price_works() {
         unimplemented!();
     }
 
     /// Test output price calculation
     /// After execution, result will be:
     /// TODO: add example calculation
-    fn get_output_price_works(
-        output_amount: Uint128,
-        input_reserve: Uint128,
-        output_reserve: Uint128,
-    ) {
+    fn get_output_price_works() {
         unimplemented!();
     }
 
@@ -444,12 +401,7 @@ mod tests {
     /// After execution, result will be:
     /// sender depositing Luna and token to the exchange contract
     /// exchange contract getting token and luna bigger than minimum amount
-    fn try_add_liquidity_works(
-        luna_amount: &Uint128,
-        token_amount: &Uint128,
-        token_address: &HumanAddr,
-        token_id: &Uint128,
-    ) {
+    fn try_add_liquidity_works() {
         unimplemented!();
     }
 
@@ -457,7 +409,7 @@ mod tests {
     /// After execution, result will be:
     /// sender having luna based on output price
     /// exchange contract getting token and giving luna to the sender
-    fn try_swap_to_luna_works(amount: &Uint128, token_id: &Uint128, recipient: &HumanAddr) {
+    fn try_swap_to_luna_works() {
         unimplemented!();
     }
 }
