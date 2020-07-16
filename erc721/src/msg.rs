@@ -33,6 +33,10 @@ pub enum HandleMsg {
         operator: HumanAddr,
         token_id: Uint128,
     },
+    SetTokenURI {
+        token_id: Uint128,
+        uri: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -16,8 +16,6 @@ use crate::state::{
     token_owner_set, token_uri_get, token_uri_set, Config,
 };
 
-//pub static ALL_ADDRESS: HumanAddr = HumanAddr::from("ALL");
-
 /// Contract instantiation tx
 /// tx inputs are specified in InitMsg in msg.rs file
 pub fn init<S: Storage, A: Api, Q: Querier>(
@@ -50,6 +48,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         }
         HandleMsg::Burn { token_id } => try_burn(deps, env, &token_id),
         HandleMsg::Mint { to, token_id } => try_mint(deps, env, &to, &token_id),
+        HandleMsg::SetTokenURI { token_id, uri } => try_set_token_uri(deps, env, &token_id, &uri),
         HandleMsg::TransferFrom { from, to, token_id } => {
             try_transfer_from(deps, env, &from, &to, &token_id)
         }
@@ -111,8 +110,8 @@ fn try_set_approval_for_all<S: Storage, A: Api, Q: Querier>(
             "invalid request: sender is not the owner of the token",
         ));
     }
-    token_approvals_set(&mut deps.storage, *token_id, Some(operator_c.clone()));
-    operator_approvals_set(&mut deps.storage, &token_owner.unwrap(), Some(operator_c));
+    token_approvals_set(&mut deps.storage, *token_id, Some(operator_c.clone()))?;
+    operator_approvals_set(&mut deps.storage, &token_owner.unwrap(), Some(operator_c))?;
 
     let res = HandleResponse {
         messages: vec![],
@@ -234,6 +233,40 @@ fn try_mint<S: Storage, A: Api, Q: Querier>(
             log("from", HumanAddr::from("0")),
             log("to", to),
             log("token_id", token_id),
+        ],
+        data: None,
+    };
+
+    Ok(res)
+}
+
+pub fn try_set_token_uri<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    token_id: &Uint128,
+    uri: &String,
+) -> StdResult<HandleResponse> {
+    let token_owner = token_owner_get(&deps.storage, *token_id);
+    if token_owner.is_none() {
+        return Err(StdError::generic_err(
+            "invalid token: token with the given identifier is not minted",
+        ));
+    }
+
+    if token_owner.unwrap() != env.message.sender {
+        return Err(StdError::generic_err(
+            "invalid request: sender is not the owner of the token",
+        ));
+    }
+
+    token_uri_set(&mut deps.storage, *token_id, uri)?;
+
+    let res = HandleResponse {
+        messages: vec![],
+        log: vec![
+            log("action", "SetTokenURI"),
+            log("token_id", token_id),
+            log("token_id", uri),
         ],
         data: None,
     };
