@@ -30,7 +30,7 @@ pub enum HandleMsg {
         token_id: Uint128,
     },
     SetApprovalForAll {
-        to: HumanAddr,
+        operator: HumanAddr,
         token_id: Uint128,
     },
 }
@@ -44,6 +44,11 @@ pub enum QueryMsg {
     OwnerOf { token_id: Uint128 },
     /// Approved address to transfer asset
     Approved { token_id: Uint128 },
+    /// Approved for all
+    ApprovedForAll {
+        owner: HumanAddr,
+        operator: HumanAddr,
+    },
     /// token URI
     TokenURI { token_id: Uint128 },
 }

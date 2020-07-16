@@ -7,12 +7,13 @@ use cosmwasm_std::{
 };
 
 use crate::msg::{
-    ApprovedResponse, BalanceOfResponse, HandleMsg, InitMsg, OwnerOfResponse, QueryMsg,
-    TokenURIResponse,
+    ApprovedForAllResponse, ApprovedResponse, BalanceOfResponse, HandleMsg, InitMsg,
+    OwnerOfResponse, QueryMsg, TokenURIResponse,
 };
 use crate::state::{
-    config, config_get, holder_tokens_get, holder_tokens_set, token_approvals_get,
-    token_approvals_set, token_owner_get, token_owner_set, token_uri_get, token_uri_set, Config,
+    config, config_get, holder_tokens_get, holder_tokens_set, operator_approvals_get,
+    operator_approvals_set, token_approvals_get, token_approvals_set, token_owner_get,
+    token_owner_set, token_uri_get, token_uri_set, Config,
 };
 
 //pub static ALL_ADDRESS: HumanAddr = HumanAddr::from("ALL");
@@ -44,8 +45,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<Empty>> {
     match msg {
         HandleMsg::Approve { to, token_id } => try_approve(deps, env, &to, &token_id),
-        HandleMsg::SetApprovalForAll { to, token_id } => {
-            try_set_approval_for_all(deps, env, &token_id)
+        HandleMsg::SetApprovalForAll { operator, token_id } => {
+            try_set_approval_for_all(deps, env, &operator, &token_id)
         }
         HandleMsg::Burn { token_id } => try_burn(deps, env, &token_id),
         HandleMsg::Mint { to, token_id } => try_mint(deps, env, &to, &token_id),
@@ -75,7 +76,7 @@ fn try_approve<S: Storage, A: Api, Q: Querier>(
     }
 
     let to_c = deps.api.canonical_address(to)?;
-    token_approvals_set(&mut deps.storage, *token_id, Some(to_c));
+    token_approvals_set(&mut deps.storage, *token_id, Some(to_c))?;
 
     let res = HandleResponse {
         messages: vec![],
@@ -94,8 +95,10 @@ fn try_approve<S: Storage, A: Api, Q: Querier>(
 fn try_set_approval_for_all<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
+    operator: &HumanAddr,
     token_id: &Uint128,
 ) -> StdResult<HandleResponse> {
+    let operator_c = deps.api.canonical_address(operator)?;
     let token_owner = token_owner_get(&deps.storage, *token_id);
     if token_owner.is_none() {
         return Err(StdError::generic_err(
@@ -103,13 +106,13 @@ fn try_set_approval_for_all<S: Storage, A: Api, Q: Querier>(
         ));
     }
 
-    if token_owner.unwrap() != env.message.sender {
+    if token_owner.clone().unwrap() != env.message.sender {
         return Err(StdError::generic_err(
             "invalid request: sender is not the owner of the token",
         ));
     }
-    let to_c = deps.api.canonical_address(&HumanAddr::from("ALL"))?;
-    token_approvals_set(&mut deps.storage, *token_id, Some(to_c));
+    token_approvals_set(&mut deps.storage, *token_id, Some(operator_c.clone()));
+    operator_approvals_set(&mut deps.storage, &token_owner.unwrap(), Some(operator_c));
 
     let res = HandleResponse {
         messages: vec![],
@@ -268,6 +271,16 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
         QueryMsg::TokenURI { token_id } => {
             let uri = token_uri_get(&deps.storage, token_id).unwrap();
             let out = to_binary(&TokenURIResponse { uri })?;
+            Ok(out)
+        }
+        QueryMsg::ApprovedForAll { owner, operator } => {
+            let owner_c = deps.api.canonical_address(&owner)?;
+            let operating = operator_approvals_get(&deps.storage, &owner_c);
+            let approved_for_all = match operating {
+                Some(address) => true,
+                None => false,
+            };
+            let out = to_binary(&ApprovedForAllResponse { approved_for_all })?;
             Ok(out)
         }
     }

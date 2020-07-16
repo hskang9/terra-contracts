@@ -9,6 +9,7 @@ pub static TOKEN_OWNER_KEY: &[u8] = b"token_owner";
 pub static HOLDER_TOKENS_KEY: &[u8] = b"holder_tokens";
 pub static TOKEN_APPROVALS_KEY: &[u8] = b"token_approvals";
 pub static TOKEN_URI_KEY: &[u8] = b"token_uri";
+pub static OPERATOR_APPROVALS_KEY: &[u8] = b"operator_approvals";
 
 /// Config struct
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -17,7 +18,7 @@ pub struct Config {
     pub name: String,
     /// minimum luna to deposit to provide liquidity
     pub symbol: String,
-    /// owner address
+    /// owner
     pub owner: CanonicalAddr,
 }
 
@@ -41,7 +42,7 @@ pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()>
 pub fn token_owner_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<CanonicalAddr> {
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(TOKEN_OWNER_KEY, storage).may_load(&serialized) {
-        Ok(Some(address)) => address,
+        Ok(Some(wrapped_address)) => wrapped_address,
         _ => None,
     }
 }
@@ -68,7 +69,7 @@ pub fn token_owner_set<S: Storage>(
 /// holer: holder's address
 pub fn holder_tokens_get<S: Storage>(storage: &S, holder: &CanonicalAddr) -> Option<Vec<Uint128>> {
     match ReadonlyBucket::new(HOLDER_TOKENS_KEY, storage).may_load(holder.as_slice()) {
-        Ok(Some(tokens)) => tokens,
+        Ok(Some(wrapped_tokens)) => wrapped_tokens,
         _ => None,
     }
 }
@@ -96,7 +97,7 @@ pub fn holder_tokens_set<S: Storage>(
 pub fn token_approvals_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<CanonicalAddr> {
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(TOKEN_APPROVALS_KEY, storage).may_load(&serialized) {
-        Ok(Some(address)) => address,
+        Ok(Some(wrapped_address)) => wrapped_address,
         _ => None,
     }
 }
@@ -124,7 +125,7 @@ pub fn token_approvals_set<S: Storage>(
 pub fn token_uri_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<String> {
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(TOKEN_URI_KEY, storage).may_load(&serialized) {
-        Ok(Some(uri)) => uri,
+        Ok(Some(wrapped_uri)) => wrapped_uri,
         _ => None,
     }
 }
@@ -144,5 +145,31 @@ pub fn token_uri_set<S: Storage>(
             "Failed to write to the state. key: {:?}, value: {:?}",
             serialized, uri
         ))),
+    }
+}
+
+/// Mapping from owner to operator approvals
+/// Unlike from ethereum, boolean value is replaced with Optionals: Some(address) equals bool, None equals false
+pub fn operator_approvals_set<S: Storage>(
+    storage: &mut S,
+    owner: &CanonicalAddr,
+    operator: Option<CanonicalAddr>,
+) -> StdResult<()> {
+    match Bucket::new(OPERATOR_APPROVALS_KEY, storage).save(&owner.as_slice(), &operator) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(StdError::generic_err(format!(
+            "Failed to write to the state. key: {:?}, value: {:?}",
+            owner, operator
+        ))),
+    }
+}
+
+pub fn operator_approvals_get<S: Storage>(
+    storage: &S,
+    owner: &CanonicalAddr,
+) -> Option<CanonicalAddr> {
+    match ReadonlyBucket::new(OPERATOR_APPROVALS_KEY, storage).may_load(&owner.as_slice()) {
+        Ok(Some(wrapped_address)) => wrapped_address,
+        _ => None,
     }
 }
