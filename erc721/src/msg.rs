@@ -29,7 +29,6 @@ pub enum HandleMsg {
     Burn {
         token_id: Uint128,
     },
-
     SetApprovalForAll {
         to: HumanAddr,
         token_id: Uint128,
@@ -39,28 +38,37 @@ pub enum HandleMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    Pair { token_id: Uint128 },
-    Reserve { token_id: Uint128 },
-    Config {},
+    /// Balance of NFT for the address
+    BalanceOf { address: HumanAddr },
+    /// Owner of NFT asset
+    OwnerOf { token_id: Uint128 },
+    /// Approved address to transfer asset
+    Approved { token_id: Uint128 },
+    /// token URI
+    TokenURI { token_id: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct TokenOwnerResponse {
-    pub token_address: HumanAddr,
+pub struct BalanceOfResponse {
+    pub balance: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct HolderTokensResponse {
-    pub token_id: Vec<Uint128>,
+pub struct OwnerOfResponse {
+    pub owner: HumanAddr,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct TokenApprovalsResponse {
-    pub token_address: HumanAddr,
+pub struct ApprovedResponse {
+    pub approved: HumanAddr,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-pub struct ConfigResponse {
-    pub name: String,
-    pub symbol: String,
+pub struct ApprovedForAllResponse {
+    pub approved_for_all: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct TokenURIResponse {
+    pub uri: String,
 }

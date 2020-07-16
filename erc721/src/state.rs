@@ -46,7 +46,7 @@ pub fn token_owner_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<Can
     }
 }
 
-/// Set pair between LUNA and token
+/// Set token owner of the NFT with asset index
 /// token_id: token id in bip standard
 /// address: token contract address
 pub fn token_owner_set<S: Storage>(
