@@ -138,14 +138,15 @@ fn try_transfer_from<S: Storage, A: Api, Q: Querier>(
     let to_c = deps.api.canonical_address(&to)?;
     let token_owner = token_owner_get(&deps.storage, *token_id);
     let approver = token_approvals_get(&deps.storage, *token_id);
-    let operator = operator_approvals_get(&deps.storage, &env.message.sender);
-
+    
     // Check ownership of the token
     if token_owner.is_none() {
         return Err(StdError::generic_err(
             "invalid token: token with the given identifier is not minted",
         ));
     }
+
+    let operator = operator_approvals_get(&deps.storage, &token_owner.clone().unwrap());
 
     // Check whether sender is owner,approver, or operator 
     if token_owner.clone().unwrap() != env.message.sender || approver.unwrap() != env.message.sender  || operator.unwrap() != env.message.sender 
