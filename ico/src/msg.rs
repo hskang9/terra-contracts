@@ -6,8 +6,7 @@ use crate::state::Config;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
-    pub name: String,
-    pub symbol: String,
+    pub token: HumanAddr,
     pub owner: HumanAddr,
 }
 

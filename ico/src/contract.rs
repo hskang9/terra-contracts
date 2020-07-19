@@ -7,8 +7,7 @@ use cosmwasm_std::{
 };
 
 use crate::msg::{
-    ApprovedForAllResponse, ApprovedResponse, BalanceOfResponse, HandleMsg, InitMsg,
-    OwnerOfResponse, QueryMsg, TokenURIResponse,
+     HandleMsg, InitMsg, QueryMsg, 
 };
 use crate::state::{
     config, config_get, Config,
@@ -22,8 +21,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
     let state = Config {
-        name: msg.name,
-        symbol: msg.symbol,
+        token: deps.api.canonical_address(&msg.token)?,
         owner: deps.api.canonical_address(&msg.owner)?,
     };
 
