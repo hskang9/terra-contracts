@@ -324,9 +324,11 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_set, Config};
+    use crate::state::{config, config_get,Config};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{coin, coins, CanonicalAddr, CosmosMsg, StdError, Uint128};
 
     const CANONICAL_LENGTH: usize = 20;
+
+    // TODO: Add test cases for each HandleMsg
 }
