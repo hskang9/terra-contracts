@@ -26,7 +26,7 @@ use cosmwasm_vm::testing::{
 use cosmwasm_vm::{Api, Instance};
 
 // This line will test the output of cargo wasm
-static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/uniswap_v1.wasm");
+static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/exchange.wasm");
 // You can uncomment this line instead to test productionified build from cosmwasm-opt
 // static WASM: &[u8] = include_bytes!("../contract.wasm");
 
