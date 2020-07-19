@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/home/hskang9/terra-contracts/uniswapv1/target/rls/debug/build/typenum-67a4116a03a020b0/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/home/hskang9/terra-contracts/uniswapv1/target/rls/debug/build/typenum-67a4116a03a020b0/out/op.rs
