@@ -11,8 +11,6 @@ pub static RESERVE_KEY: &[u8] = b"reserve";
 /// Config struct
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    /// total luna supply that the contract has
-    pub total_luna_supply: Uint128,
     /// minimum luna to deposit to provide liquidity
     pub minimum_luna: Uint128,
     /// canonical address of the dex owner
@@ -35,10 +33,10 @@ pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()>
 }
 
 /// Get pair between LUNA and token
-/// token_id: token id in bip standard
-/// address: token contract address
-pub fn pair_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<CanonicalAddr> {
-    let serialized = token_id.u128().to_le_bytes();
+/// channel_id: identifier for the channel between an asset and LUNA 
+/// returns tuple (address: token contract address, registrar: registrar of the channel)
+pub fn pair_get<S: Storage>(storage: &S, channel_id: Uint128) -> Option<(CanonicalAddr, CanonicalAddr)> {
+    let serialized = channel_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
         Ok(Some(address)) => Some(address),
         _ => None,
@@ -46,17 +44,17 @@ pub fn pair_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<CanonicalA
 }
 
 /// Set pair between LUNA and token
-/// token_id: token id in bip standard
-/// address: token contract address
+/// channel_id: identifier for the channel between an asset and LUNA 
+/// tuple: (address: token contract address, registrar: registrar of the channel)
 pub fn pair_set<S: Storage>(
     storage: &mut S,
-    token_id: Uint128,
-    address: &CanonicalAddr
+    channel_id: Uint128,
+    channel: (CanonicalAddr, CanonicalAddr)
 ) -> StdResult<()> {
-    let serialized = token_id.u128().to_le_bytes();
-    match Bucket::new(PAIR_KEY, storage).save(&serialized, address) {
+    let serialized = channel_id.u128().to_le_bytes();
+    match Bucket::new(PAIR_KEY, storage).save(&serialized, &channel) {
         Ok(_) => Ok(()),
-        Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, address)))
+        Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, channel)))
     }
 }
 

@@ -1,7 +1,7 @@
 # Exchange
 
 A cosmwasm contract which provides liquidity between Luna and token contracts based on Uniswap
-Unlike uniswapv1, this contract provides a platform where dex contract owners can add liquidity to the token as long as it supports Transfer{} msg and deposits minimum amounts.
+Unlike uniswapv1, this contract provides a permissionless and tokenless platform where users can add liquidity with the channel between Luna and the token as long as it supports Transfer{}, Approve{} msg and deposits minimum amounts by configuration.
 
 Here is brief overview of service process after contract instantiation.
 

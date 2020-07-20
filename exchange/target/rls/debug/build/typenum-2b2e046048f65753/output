@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/hyungsukkang/terra/terra-contracts/exchange/target/rls/debug/build/typenum-2b2e046048f65753/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/hyungsukkang/terra/terra-contracts/exchange/target/rls/debug/build/typenum-2b2e046048f65753/out/op.rs

@@ -19,7 +19,6 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
     let state = Config {
-        total_luna_supply: Uint128(0),
         minimum_luna: msg.minimum_luna,
         owner: deps.api.canonical_address(&msg.owner)?,
     };
@@ -97,8 +96,9 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     // Check whether token is already registered
     let registered = pair_get(&deps.storage, *token_id);
     if registered.is_some() {
-        let registered_h = deps.api.human_address(&registered.unwrap());
-        return Err(StdError::generic_err(format!("Token is already registered token_id: {}, registered_address: {:?}", *token_id, registered_h)));
+        let registered_h = deps.api.human_address(&registered.clone().unwrap().0);
+        let registrar_h = deps.api.human_address(&registered.unwrap().1);
+        return Err(StdError::generic_err(format!("Token is already registered channel_id: {}, registered_token_address: {:?}, registrar_address: {:?}", *token_id, registered_h, registrar_h)));
     }
 
     // Check whether the sender is the owner of the token contract
@@ -111,7 +111,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     pair_set(
         &mut deps.storage,
         *token_id,
-        &token_canonical,
+        (token_canonical.clone(), env.message.sender.clone())
     )?;
     // Register each reserve in reserves
     reserve_set(&mut deps.storage, *token_id, (*luna_amount, *token_amount))?;
@@ -124,7 +124,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     let res = HandleResponse {
         messages: vec![token_transfer_from],
         log: vec![log("action", "add_liquidity"),
-                  log("from", deps.api.human_address(&env.message.sender)?),
+                  log("registrar", deps.api.human_address(&env.message.sender)?),
                   log("to", contract_h),
                   log("luna_amount", *luna_amount),
                   log("token_amount", *token_amount)],
@@ -167,9 +167,9 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     reserve_set(&mut deps.storage, *token_id, (new_luna_reserve, new_token_reserve))?;
 
     // Get token and send luna to recipient address
-    let token_address = pair_get(&deps.storage, *token_id).unwrap();
+    let channel = pair_get(&deps.storage, *token_id).unwrap();
     let token_transfer_from =
-        create_transfer_from_msg(&deps.api, &token_address, sender_h.clone(), contract_h.clone(), *amount, None)?;
+        create_transfer_from_msg(&deps.api, &channel.0, sender_h.clone(), contract_h.clone(), *amount, None)?;
 
     let luna_transfer = BankMsg::Send {
         from_address: contract_h,
@@ -212,8 +212,8 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
-    let token_address: Option<CanonicalAddr> = pair_get(&deps.storage, *token_id);
-    if token_address.is_none() {
+    let channel: Option<(CanonicalAddr, CanonicalAddr)> = pair_get(&deps.storage, *token_id);
+    if channel.is_none() {
         return Err(StdError::generic_err("Token is not registered yet"));
     }
 
@@ -232,7 +232,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
 
     // Get token and send luna to recipient address
     let token_transfer =
-        create_transfer_msg(&deps.api, &token_address.unwrap(), sender_h, tokens_bought, Some(vec![Coin {
+        create_transfer_msg(&deps.api, &channel.unwrap().0, sender_h, tokens_bought, Some(vec![Coin {
             denom: "uluna".to_string(),
             amount: *amount,
         }]))?;
@@ -250,6 +250,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     Ok(res)
 }
 
+// registrar removes channel and retrieves deposited Luna and tokens
 pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -259,16 +260,15 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
-    let token_address: Option<CanonicalAddr> = pair_get(&deps.storage, *token_id);
-    if token_address.is_none() {
+    let channel: Option<(CanonicalAddr, CanonicalAddr)> = pair_get(&deps.storage, *token_id);
+    if channel.is_none() {
         return Err(StdError::generic_err("Token is not registered yet"));
     }
 
-    // Check if the sender is the dex contract owner
-    let config = config_get(&deps.storage)?;
-    if config.owner != env.message.sender
+    // Check if the sender is the channel registrar
+    if channel.clone().unwrap().1 != env.message.sender
     {
-        return Err(StdError::generic_err(format!("You are not authorized to execute this function. owner: {}, sender: {}", config.owner, env.message.sender)));
+        return Err(StdError::generic_err(format!("You are not authorized to execute this function. registrar: {}, sender: {}", channel.unwrap().1, env.message.sender)));
     }
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
@@ -277,7 +277,7 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     let luna_reserve: Uint128 = reserves.0;
 
     let token_transfer =
-    create_transfer_msg(&deps.api, &token_address.unwrap(), sender_h.clone(), token_reserve, None)?;
+    create_transfer_msg(&deps.api, &channel.unwrap().0, sender_h.clone(), token_reserve, None)?;
 
 
     let luna_transfer = BankMsg::Send {
@@ -318,7 +318,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
         QueryMsg::Pair { token_id } => {
             let token_address: HumanAddr = match pair_get(&deps.storage, token_id) {
                 Some(n) => {
-                    deps.api.human_address(&n)?
+                    deps.api.human_address(&n.0)?
                 }
                 None => {
                     HumanAddr::from("0")
