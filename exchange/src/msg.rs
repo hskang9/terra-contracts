@@ -33,12 +33,19 @@ pub enum HandleMsg {
     RemoveLiquidity {
         channel_id: Uint128
     },
-    SwapLunaToTokenOutput {
+    SwapToTokenOutput {
         tokens_bought: Uint128,
         max_luna: Uint128,
         deadline: Uint128,
         channel_id: Uint128,
         recipient: HumanAddr,
+    },
+    SwapToLunaOutput {
+        luna_bought: Uint128,
+        max_tokens: Uint128,
+        deadline: Uint128,
+        channel_id: Uint128,
+        recipient: HumanAddr
     }
 }
 

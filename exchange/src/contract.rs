@@ -62,13 +62,20 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::RemoveLiquidity {
             channel_id
         } => try_remove_liquidity(deps, env, &channel_id),
-        HandleMsg::SwapLunaToTokenOutput {
+        HandleMsg::SwapToTokenOutput {
             tokens_bought,
             max_luna,
             deadline,
             channel_id,
             recipient
-        } => try_swap_to_token_output(deps, env, &tokens_bought, &max_luna, &deadline, &channel_id, &recipient)
+        } => try_swap_to_token_output(deps, env, &tokens_bought, &max_luna, &deadline, &channel_id, &recipient),
+        HandleMsg::SwapToLunaOutput {
+            luna_bought,
+            max_tokens,
+            deadline,
+            channel_id,
+            recipient
+        } => try_swap_to_luna_output(deps, env, &luna_bought, &max_tokens, &deadline, &channel_id, &recipient)
     }
 }
 
@@ -201,6 +208,62 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     Ok(res)
 }
 
+// Buy luna fully using limited amount of tokens in a channel
+fn try_swap_to_luna_output<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    luna_bought: &Uint128,
+    max_tokens: &Uint128,
+    deadline: &Uint128,
+    channel_id: &Uint128,
+    recipient: &HumanAddr,
+) -> StdResult<HandleResponse> {
+    let sender_h = deps.api.human_address(&env.message.sender)?;
+    let contract_h = deps.api.human_address(&env.contract.address)?;
+    
+    if *deadline >= Uint128(env.block.height as u128) && (*luna_bought > Uint128(0)) {}
+    else {        
+        return Err(StdError::generic_err(format!("Invalid request: one of three inputs is lower or equal to zero")));
+    }
+
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *channel_id).unwrap();
+    let token_reserve: Uint128 = reserves.1;
+    let luna_reserve: Uint128 = reserves.0;
+    let tokens_sold = get_output_price(*luna_bought, token_reserve, luna_reserve);
+    if *max_tokens >= tokens_sold {}
+    else {        
+        return Err(StdError::generic_err(format!("Invalid request: max_tokens is lower than the tokens_sold")));
+    }
+
+    
+    let channel = pair_get(&deps.storage, *channel_id).unwrap();
+    let token_transfer_from =
+        create_transfer_from_msg(&deps.api, &channel.0, sender_h.clone(), contract_h.clone(), tokens_sold, None)?;
+
+
+    let luna_transfer = BankMsg::Send {
+        from_address: contract_h,
+        to_address: recipient.clone(),
+        amount: vec![Coin {
+            denom: "uluna".to_string(),
+            amount: *luna_bought,
+        }],
+    }
+    .into();
+        
+    let res = HandleResponse {
+        messages: vec![luna_transfer, token_transfer_from],
+        log: vec![log("action", "swap_to_luna_output"),
+                  log("from", deps.api.human_address(&env.message.sender)?),
+                  log("to", recipient),
+                  log("max_tokens_amount", *max_tokens),
+                  log("luna_output_amount", *luna_bought)],
+        data: None,
+    };
+
+    Ok(res)
+}
+
 /// Swap Luna to a token from this contract address with sell order
 /// deps: dependancies for cosmos SDK:  Storage S, Api A, Querier Q
 /// env: Environment of tx input
@@ -259,6 +322,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
 
 }
 
+/// Buy maximum amount of token with limited luna(max_luna)
 fn try_swap_to_token_output<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -313,7 +377,7 @@ fn try_swap_to_token_output<S: Storage, A: Api, Q: Querier>(
 }
 
 
-// registrar removes channel and retrieves deposited Luna and tokens
+/// registrar removes channel and retrieves deposited Luna and tokens
 pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
