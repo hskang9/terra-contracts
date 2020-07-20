@@ -1,31 +1,27 @@
 # Exchange
 
 A cosmwasm contract which provides liquidity between Luna and token contracts based on Uniswap
-Unlike uniswapv1, this contract provides a permissionless and tokenless platform where users can add liquidity with the channel between Luna and the token as long as it supports Transfer{}, Approve{} msg and deposits minimum amounts by configuration.
-
-Here is brief overview of service process after contract instantiation.
-
-![](https://p65.f3.n0.cdn.getcloudapp.com/items/YEupeBRY/uniswap.png?v=ae1411ba3d9944d86b1094a9071ec657)
+Unlike uniswapv1, this contract provides a permissionless and tokenless platform where users can add liquidity with the channel between Luna and [the token contract](../erc20).
 
 ## Interface
 
 
 ### AddLiquidity
 
-An Exchange contract owner adds liquidity to LUNA with a token by depositing both LUNA and the token to the dex contract.
-A Token is then registered in the Pair storage. Approval is required from the sender to the dex contract for executing this function. UniswapV1 contract enables token holders to liquidify to LUNA and vice versa in decentralized way.
+A liquidity provider adds liquidity to LUNA with a token by depositing both LUNA and the token to the dex contract.
+A Token is then registered in the Pair storage. Approval is required from the sender to the dex contract for executing this function. The contract enables token holders to liquidify to LUNA and vice versa in decentralized way.
 
 ### SwapToLuna
 
-With a token_id and amount, a user sends token to the contract address and then gets Luna based on the ratio calculated from each reserve(e.g. LUNA/Token). Approval is required from the token holder to uniswapV1 contract to execute this function. The ratio is uploaded after the transaction.
+With a token_id and amount arguments, a user sends token to the dex contract and then gets Luna based on the ratio calculated from each reserve(e.g. LUNA/Token). Approval is required from the token holder to the dex contract to execute this function. The ratio is updated after each transaction.
 
 ### SwapToToken
 
-With a token_id to receive and amount, a user sends luna to the contract and gets token from contract from the ratio which is based on each reserve(e.g. LUNA/Token). token must be registered.
+With a token_id to receive and amount arguments, a user sends luna to the dex contract and gets token from contract from the ratio which is based on each reserve(e.g. LUNA/Token). token must be registered. The ratio is updated after each transaction.
 
 ### RemoveLiquidity
 
-A dex contract owner removes liquidity to Luna with the token to the dex contract. Both deposited reserves are returned to the exchange contract owner.
+A liquidity provider removes liquidity between Luna and the token in the dex contract. Both deposited reserves are returned to the liquidity provider's account.
 
 ## Compilation
 

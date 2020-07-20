@@ -1,5 +1,5 @@
 [package]
-name = "erc721"
+name = "dice"
 version = "0.1.0"
 authors = ["Hyungsuk Kang <hskang9@gmail.com>"]
 edition = "2018"
