@@ -38,7 +38,7 @@ pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()>
 pub fn pair_get<S: Storage>(storage: &S, channel_id: Uint128) -> Option<(CanonicalAddr, CanonicalAddr)> {
     let serialized = channel_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
-        Ok(Some(address)) => Some(address),
+        Ok(Some(wrapped_address)) => wrapped_address,
         _ => None,
     }
 }
@@ -49,7 +49,7 @@ pub fn pair_get<S: Storage>(storage: &S, channel_id: Uint128) -> Option<(Canonic
 pub fn pair_set<S: Storage>(
     storage: &mut S,
     channel_id: Uint128,
-    channel: (CanonicalAddr, CanonicalAddr)
+    channel: Option<(CanonicalAddr, CanonicalAddr)>
 ) -> StdResult<()> {
     let serialized = channel_id.u128().to_le_bytes();
     match Bucket::new(PAIR_KEY, storage).save(&serialized, &channel) {

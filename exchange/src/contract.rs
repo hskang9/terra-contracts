@@ -125,7 +125,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     pair_set(
         &mut deps.storage,
         *channel_id,
-        (token_canonical.clone(), env.message.sender.clone())
+        Some((token_canonical.clone(), env.message.sender.clone()))
     )?;
     // Register each reserve in reserves
     reserve_set(&mut deps.storage, *channel_id, (*luna_amount, *token_amount))?;
@@ -417,10 +417,12 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     }
     .into();
 
+    pair_set(&mut deps.storage, *channel_id, None);
+
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
         log: vec![log("action", "remove_liquidity"),
-                  log("removed_asset_id", *channel_id)],
+                  log("removed_channel_id", *channel_id)],
         data: None,
     };
 
