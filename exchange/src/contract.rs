@@ -567,34 +567,5 @@ mod tests {
 
     const CANONICAL_LENGTH: usize = 20;
 
-    // State tests
-    /// Test input price calculation
-    /// After execution, result will be:
-    /// TODO: add example calculation
-    fn get_input_price_works() {
-        unimplemented!();
-    }
-
-    /// Test output price calculation
-    /// After execution, result will be:
-    /// TODO: add example calculation
-    fn get_output_price_works() {
-        unimplemented!();
-    }
-
-    /// Test adding liquidity
-    /// After execution, result will be:
-    /// sender depositing Luna and token to the exchange contract
-    /// exchange contract getting token and luna bigger than minimum amount
-    fn try_add_liquidity_works() {
-        unimplemented!();
-    }
-
-    /// Test token to Luna swap
-    /// After execution, result will be:
-    /// sender having luna based on output price
-    /// exchange contract getting token and giving luna to the sender
-    fn try_swap_to_luna_works() {
-        unimplemented!();
-    }
+    // TODO: test each HandleMsg functions
 }
