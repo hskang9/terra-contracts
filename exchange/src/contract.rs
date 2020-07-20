@@ -40,28 +40,35 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             luna_amount,
             token_amount,
             token_address,
-            token_id,
+            channel_id,
         } => try_add_liquidity(
             deps,
             env,
             &luna_amount,
             &token_amount,
             &token_address,
-            &token_id,
+            &channel_id,
         ),
         HandleMsg::SwapTokenToLuna {
             amount,
-            token_id,
+            channel_id,
             recipient,
-        } => try_swap_to_luna(deps, env, &amount, &token_id, &recipient),
+        } => try_swap_to_luna(deps, env, &amount, &channel_id, &recipient),
         HandleMsg::SwapLunaToToken {
             amount,
-            token_id,
+            channel_id,
             recipient,
-        } => try_swap_to_token(deps, env, &amount, &token_id, &recipient),
+        } => try_swap_to_token(deps, env, &amount, &channel_id, &recipient),
         HandleMsg::RemoveLiquidity {
-            token_id
-        } => try_remove_liquidity(deps, env, &token_id),
+            channel_id
+        } => try_remove_liquidity(deps, env, &channel_id),
+        HandleMsg::SwapLunaToTokenOutput {
+            tokens_bought,
+            max_luna,
+            deadline,
+            channel_id,
+            recipient
+        } => try_swap_to_token_output(deps, env, &tokens_bought, &max_luna, &deadline, &channel_id, &recipient)
     }
 }
 
@@ -70,7 +77,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 /// env: environment of the tx input
 /// luna_amount: Amount of Luna to deposit to register token in Liquidity provider contract(a.k.a. uniswap)
 /// token_amount: Amount of token to deposit to register token in Liquidity provider contract(a.k.a. uniswap)
-/// token_id: Identifier for token following BIP standard
+/// channel_id: Identifier for token following BIP standard
 /// returns
 /// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
 fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
@@ -79,7 +86,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     luna_amount: &Uint128,
     token_amount: &Uint128,
     token_address: &HumanAddr,
-    token_id: &Uint128,
+    channel_id: &Uint128,
 ) -> StdResult<HandleResponse> {
     // Human address for sender
     let sender_h = deps.api.human_address(&env.message.sender)?;
@@ -94,11 +101,11 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     }
 
     // Check whether token is already registered
-    let registered = pair_get(&deps.storage, *token_id);
+    let registered = pair_get(&deps.storage, *channel_id);
     if registered.is_some() {
         let registered_h = deps.api.human_address(&registered.clone().unwrap().0);
         let registrar_h = deps.api.human_address(&registered.unwrap().1);
-        return Err(StdError::generic_err(format!("Token is already registered channel_id: {}, registered_token_address: {:?}, registrar_address: {:?}", *token_id, registered_h, registrar_h)));
+        return Err(StdError::generic_err(format!("Token is already registered channel_id: {}, registered_token_address: {:?}, registrar_address: {:?}", *channel_id, registered_h, registrar_h)));
     }
 
     // Check whether the sender is the owner of the token contract
@@ -110,11 +117,11 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     // Register token in Tokens
     pair_set(
         &mut deps.storage,
-        *token_id,
+        *channel_id,
         (token_canonical.clone(), env.message.sender.clone())
     )?;
     // Register each reserve in reserves
-    reserve_set(&mut deps.storage, *token_id, (*luna_amount, *token_amount))?;
+    reserve_set(&mut deps.storage, *channel_id, (*luna_amount, *token_amount))?;
 
     let token_transfer_from =
         create_transfer_from_msg(&deps.api, &token_canonical, sender_h.clone(), contract_h.clone(), *token_amount, Some(vec![Coin {
@@ -138,7 +145,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
 /// deps: dependancies for cosmos SDK:  Storage S, Api A, Querier Q
 /// env: Environment of tx input
 /// amount: amount of token to swap
-/// token_id: Identifier for token in BIP standard
+/// channel_id: Identifier for token in BIP standard
 /// recipient: address to receive LUNA
 /// returns
 /// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
@@ -146,28 +153,28 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     amount: &Uint128,
-    token_id: &Uint128,
+    channel_id: &Uint128,
     recipient: &HumanAddr,
 ) -> StdResult<HandleResponse> {
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
-    if pair_get(&deps.storage, *token_id).is_none() {
+    if pair_get(&deps.storage, *channel_id).is_none() {
         return Err(StdError::generic_err("Token is not registered yet"));
     }
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
-    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *token_id).unwrap();
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *channel_id).unwrap();
     let token_reserve: Uint128 = reserves.1;
     let luna_reserve: Uint128 = reserves.0;
     let luna_bought: Uint128 = get_input_price(*amount, token_reserve, luna_reserve)?;
     // Change reserve amount
     let new_token_reserve: Uint128 = token_reserve + *amount;
     let new_luna_reserve: Uint128 = (luna_reserve - luna_bought)?;
-    reserve_set(&mut deps.storage, *token_id, (new_luna_reserve, new_token_reserve))?;
+    reserve_set(&mut deps.storage, *channel_id, (new_luna_reserve, new_token_reserve))?;
 
     // Get token and send luna to recipient address
-    let channel = pair_get(&deps.storage, *token_id).unwrap();
+    let channel = pair_get(&deps.storage, *channel_id).unwrap();
     let token_transfer_from =
         create_transfer_from_msg(&deps.api, &channel.0, sender_h.clone(), contract_h.clone(), *amount, None)?;
 
@@ -198,7 +205,7 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
 /// deps: dependancies for cosmos SDK:  Storage S, Api A, Querier Q
 /// env: Environment of tx input
 /// amount: amount of Luna to swap
-/// token_id: Identifier for token in BIP standard
+/// channel_id: Identifier for token in BIP standard
 /// recipient: address to receive Token
 /// returns
 /// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
@@ -206,19 +213,19 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     amount: &Uint128,
-    token_id: &Uint128,
+    channel_id: &Uint128,
     recipient: &HumanAddr,
 ) -> StdResult<HandleResponse> {
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
-    let channel: Option<(CanonicalAddr, CanonicalAddr)> = pair_get(&deps.storage, *token_id);
+    let channel: Option<(CanonicalAddr, CanonicalAddr)> = pair_get(&deps.storage, *channel_id);
     if channel.is_none() {
         return Err(StdError::generic_err("Token is not registered yet"));
     }
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
-    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *token_id).unwrap();
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *channel_id).unwrap();
     let token_reserve: Uint128 = reserves.1;
     let luna_reserve: Uint128 = reserves.0;
     let input_reserve: Uint128 = (luna_reserve - *amount).unwrap();
@@ -228,7 +235,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     // Change reserve amount
     let new_luna_reserve: Uint128 = luna_reserve + *amount;
     let new_token_reserve: Uint128 = (token_reserve - tokens_bought)?;
-    reserve_set(&mut deps.storage, *token_id, (new_luna_reserve, new_token_reserve))?;
+    reserve_set(&mut deps.storage, *channel_id, (new_luna_reserve, new_token_reserve))?;
 
     // Get token and send luna to recipient address
     let token_transfer =
@@ -248,19 +255,75 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     };
 
     Ok(res)
+
+
 }
+
+fn try_swap_to_token_output<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    tokens_bought: &Uint128,
+    max_luna: &Uint128,
+    deadline: &Uint128,
+    channel_id: &Uint128,
+    recipient: &HumanAddr,
+) -> StdResult<HandleResponse> {
+    let sender_h = deps.api.human_address(&env.message.sender)?;
+    let contract_h = deps.api.human_address(&env.contract.address)?;
+    
+    if *deadline >= Uint128(env.block.height as u128) && (*tokens_bought > Uint128(0) && *max_luna > Uint128(0)) {}
+    else {        
+        return Err(StdError::generic_err(format!("Invalid request: one of three inputs is lower or equal to zero")));
+    }
+
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *channel_id).unwrap();
+    let token_reserve: Uint128 = reserves.1;
+    let luna_reserve: Uint128 = reserves.0;
+    let luna_sold = get_output_price(*tokens_bought, (luna_reserve - *max_luna)?, token_reserve);
+    let luna_refund = (*max_luna - luna_sold)?;
+    
+    let luna_transfer = BankMsg::Send {
+        from_address: contract_h,
+        to_address: recipient.clone(),
+        amount: vec![Coin {
+            denom: "uluna".to_string(),
+            amount: luna_refund,
+        }],
+    }
+    .into();
+    let channel = pair_get(&deps.storage, *channel_id).unwrap();
+    
+    let token_transfer =
+        create_transfer_msg(&deps.api, &channel.0, sender_h, *tokens_bought, Some(vec![Coin {
+            denom: "uluna".to_string(),
+            amount: luna_sold,
+        }]))?;
+        
+    let res = HandleResponse {
+        messages: vec![luna_transfer, token_transfer],
+        log: vec![log("action", "swap_to_luna_output"),
+                  log("from", deps.api.human_address(&env.message.sender)?),
+                  log("to", recipient),
+                  log("max_luna_amount", *max_luna),
+                  log("token_output_amount", *tokens_bought)],
+        data: None,
+    };
+
+    Ok(res)
+}
+
 
 // registrar removes channel and retrieves deposited Luna and tokens
 pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    token_id: &Uint128
+    channel_id: &Uint128
 ) -> StdResult<HandleResponse> {
 
     let sender_h = deps.api.human_address(&env.message.sender)?;
     let contract_h = deps.api.human_address(&env.contract.address)?;
     // Check if token is registered from pair
-    let channel: Option<(CanonicalAddr, CanonicalAddr)> = pair_get(&deps.storage, *token_id);
+    let channel: Option<(CanonicalAddr, CanonicalAddr)> = pair_get(&deps.storage, *channel_id);
     if channel.is_none() {
         return Err(StdError::generic_err("Token is not registered yet"));
     }
@@ -272,7 +335,7 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     }
 
     // Get price from each reserve Index 0: Luna, Index 1: Token
-    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *token_id).unwrap();
+    let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *channel_id).unwrap();
     let token_reserve: Uint128 = reserves.1;
     let luna_reserve: Uint128 = reserves.0;
 
@@ -293,7 +356,7 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
         log: vec![log("action", "remove_liquidity"),
-                  log("removed_asset_id", *token_id)],
+                  log("removed_asset_id", *channel_id)],
         data: None,
     };
 
@@ -315,8 +378,8 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             })?;
             Ok(out)
         }
-        QueryMsg::Pair { token_id } => {
-            let token_address: HumanAddr = match pair_get(&deps.storage, token_id) {
+        QueryMsg::Pair { channel_id } => {
+            let token_address: HumanAddr = match pair_get(&deps.storage, channel_id) {
                 Some(n) => {
                     deps.api.human_address(&n.0)?
                 }
@@ -330,8 +393,8 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
             })?;
             Ok(out)
         }
-        QueryMsg::Reserve { token_id } => {
-            let reserves: (Uint128,  Uint128) = reserve_get(&deps.storage, token_id).unwrap();
+        QueryMsg::Reserve { channel_id } => {
+            let reserves: (Uint128,  Uint128) = reserve_get(&deps.storage, channel_id).unwrap();
             let out = to_binary(&ReserveResponse { reserves })?;
             Ok(out)
         }

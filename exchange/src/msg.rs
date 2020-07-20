@@ -18,20 +18,27 @@ pub enum HandleMsg {
         luna_amount: Uint128,
         token_amount: Uint128,
         token_address: HumanAddr,
-        token_id: Uint128
+        channel_id: Uint128
     },
     SwapTokenToLuna {
         amount: Uint128,
-        token_id: Uint128,
+        channel_id: Uint128,
         recipient: HumanAddr
     },
     SwapLunaToToken {
         amount: Uint128,
-        token_id: Uint128,
+        channel_id: Uint128,
         recipient: HumanAddr
     },
     RemoveLiquidity {
-        token_id: Uint128
+        channel_id: Uint128
+    },
+    SwapLunaToTokenOutput {
+        tokens_bought: Uint128,
+        max_luna: Uint128,
+        deadline: Uint128,
+        channel_id: Uint128,
+        recipient: HumanAddr,
     }
 }
 
@@ -60,8 +67,8 @@ pub enum ERC20HandleMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    Pair { token_id: Uint128 },
-    Reserve { token_id: Uint128 },
+    Pair { channel_id: Uint128 },
+    Reserve { channel_id: Uint128 },
     Config{},
 }
 
