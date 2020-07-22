@@ -1,17 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PairResponse",
+  "title": "BalanceOfResponse",
   "type": "object",
   "required": [
-    "token_address"
+    "balance"
   ],
   "properties": {
-    "token_address": {
-      "$ref": "#/definitions/HumanAddr"
+    "balance": {
+      "$ref": "#/definitions/Uint128"
     }
   },
   "definitions": {
-    "HumanAddr": {
+    "Uint128": {
       "type": "string"
     }
   }

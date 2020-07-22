@@ -19,5 +19,8 @@ fn main() {
     export_schema(&schema_for!(ConfigResponse), &out_dir);
     export_schema(&schema_for!(BalanceOfResponse), &out_dir);
     export_schema(&schema_for!(ConfigResponse), &out_dir);
-    export_schema(&schema_for!(ReserveResponse), &out_dir);
+    export_schema(&schema_for!(OwnerOfResponse), &out_dir);
+    export_schema(&schema_for!(ApprovedResponse), &out_dir);
+    export_schema(&schema_for!(ApprovedForAllResponse), &out_dir);
+    export_schema(&schema_for!(TokenURIResponse), &out_dir);
 }

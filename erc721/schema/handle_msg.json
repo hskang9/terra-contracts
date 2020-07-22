@@ -3,55 +3,19 @@
   "title": "HandleMsg",
   "anyOf": [
     {
-      "description": "AddLiquidity will deposit LUNA and Token to add liquidity between them",
       "type": "object",
       "required": [
-        "add_liquidity"
+        "approve"
       ],
       "properties": {
-        "add_liquidity": {
+        "approve": {
           "type": "object",
           "required": [
-            "luna_amount",
-            "token_address",
-            "token_amount",
+            "to",
             "token_id"
           ],
           "properties": {
-            "luna_amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "token_address": {
-              "$ref": "#/definitions/HumanAddr"
-            },
-            "token_amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "token_id": {
-              "$ref": "#/definitions/Uint128"
-            }
-          }
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "swap_token_to_luna"
-      ],
-      "properties": {
-        "swap_token_to_luna": {
-          "type": "object",
-          "required": [
-            "amount",
-            "recipient",
-            "token_id"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "recipient": {
+            "to": {
               "$ref": "#/definitions/HumanAddr"
             },
             "token_id": {
@@ -64,25 +28,113 @@
     {
       "type": "object",
       "required": [
-        "swap_luna_to_token"
+        "transfer_from"
       ],
       "properties": {
-        "swap_luna_to_token": {
+        "transfer_from": {
           "type": "object",
           "required": [
-            "amount",
-            "recipient",
+            "from",
+            "to",
             "token_id"
           ],
           "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
+            "from": {
+              "$ref": "#/definitions/HumanAddr"
             },
-            "recipient": {
+            "to": {
               "$ref": "#/definitions/HumanAddr"
             },
             "token_id": {
               "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "mint"
+      ],
+      "properties": {
+        "mint": {
+          "type": "object",
+          "required": [
+            "to",
+            "token_id"
+          ],
+          "properties": {
+            "to": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "token_id": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "burn"
+      ],
+      "properties": {
+        "burn": {
+          "type": "object",
+          "required": [
+            "token_id"
+          ],
+          "properties": {
+            "token_id": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_approval_for_all"
+      ],
+      "properties": {
+        "set_approval_for_all": {
+          "type": "object",
+          "required": [
+            "operator",
+            "token_id"
+          ],
+          "properties": {
+            "operator": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "token_id": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_token_u_r_i"
+      ],
+      "properties": {
+        "set_token_u_r_i": {
+          "type": "object",
+          "required": [
+            "token_id",
+            "uri"
+          ],
+          "properties": {
+            "token_id": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "uri": {
+              "type": "string"
             }
           }
         }

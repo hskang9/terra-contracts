@@ -3,22 +3,23 @@
   "title": "ConfigResponse",
   "type": "object",
   "required": [
-    "minimum_luna",
-    "owner"
+    "name",
+    "owner",
+    "symbol"
   ],
   "properties": {
-    "minimum_luna": {
-      "$ref": "#/definitions/Uint128"
+    "name": {
+      "type": "string"
     },
     "owner": {
       "$ref": "#/definitions/HumanAddr"
+    },
+    "symbol": {
+      "type": "string"
     }
   },
   "definitions": {
     "HumanAddr": {
-      "type": "string"
-    },
-    "Uint128": {
       "type": "string"
     }
   }
