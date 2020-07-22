@@ -8,7 +8,7 @@ use crate::contract::{
     bytes_to_u128, handle, init, query, read_u128, Constants, KEY_CONSTANTS, KEY_TOTAL_SUPPLY,
     PREFIX_ALLOWANCES, PREFIX_BALANCES, PREFIX_CONFIG,
 };
-use crate::msg::{HandleMsg, InitMsg, InitialBalance, QueryMsg};
+use crate::msg::{ERC20HandleMsg, InitMsg, InitialBalance, QueryMsg};
 
 static CANONICAL_LENGTH: usize = 20;
 
@@ -377,7 +377,7 @@ mod transfer {
         assert_eq!(get_total_supply(&deps.storage), 66);
 
         // Transfer
-        let transfer_msg = HandleMsg::Transfer {
+        let transfer_msg = ERC20HandleMsg::Transfer {
             recipient: HumanAddr("addr1111".to_string()),
             amount: Uint128::from(1u128),
         };
@@ -433,7 +433,7 @@ mod transfer {
         assert_eq!(get_total_supply(&deps.storage), 66);
 
         // Transfer
-        let transfer_msg = HandleMsg::Transfer {
+        let transfer_msg = ERC20HandleMsg::Transfer {
             recipient: HumanAddr("addr2323".to_string()),
             amount: Uint128::from(1u128),
         };
@@ -493,7 +493,7 @@ mod transfer {
         assert_eq!(get_total_supply(&deps.storage), 66);
 
         // Transfer
-        let transfer_msg = HandleMsg::Transfer {
+        let transfer_msg = ERC20HandleMsg::Transfer {
             recipient: HumanAddr("addr1111".to_string()),
             amount: Uint128::from(0u128),
         };
@@ -539,7 +539,7 @@ mod transfer {
         assert_eq!(get_balance(&deps.api, &deps.storage, &sender), 11);
 
         // Transfer
-        let transfer_msg = HandleMsg::Transfer {
+        let transfer_msg = ERC20HandleMsg::Transfer {
             recipient: sender.clone(),
             amount: Uint128::from(3u128),
         };
@@ -583,7 +583,7 @@ mod transfer {
         assert_eq!(get_total_supply(&deps.storage), 66);
 
         // Transfer
-        let transfer_msg = HandleMsg::Transfer {
+        let transfer_msg = ERC20HandleMsg::Transfer {
             recipient: HumanAddr("addr1111".to_string()),
             amount: Uint128::from(12u128),
         };
@@ -695,7 +695,7 @@ mod approve {
         // First approval
         let owner = HumanAddr("addr7654".to_string());
         let spender = make_spender();
-        let approve_msg1 = HandleMsg::Approve {
+        let approve_msg1 = ERC20HandleMsg::Approve {
             spender: spender.clone(),
             amount: Uint128::from(334422u128),
         };
@@ -717,7 +717,7 @@ mod approve {
         );
 
         // Updated approval
-        let approve_msg2 = HandleMsg::Approve {
+        let approve_msg2 = ERC20HandleMsg::Approve {
             spender: spender.clone(),
             amount: Uint128::from(777888u128),
         };
@@ -782,7 +782,7 @@ mod transfer_from {
         let recipient = HumanAddr("addr1212".to_string());
 
         // Set approval
-        let approve_msg = HandleMsg::Approve {
+        let approve_msg = ERC20HandleMsg::Approve {
             spender: spender.clone(),
             amount: Uint128::from(4u128),
         };
@@ -802,7 +802,7 @@ mod transfer_from {
         assert_eq!(get_allowance(&deps.api, &deps.storage, &owner, &spender), 4);
 
         // Transfer less than allowance but more than balance
-        let transfer_from_msg = HandleMsg::TransferFrom {
+        let transfer_from_msg = ERC20HandleMsg::TransferFrom {
             owner: owner.clone(),
             recipient: recipient.clone(),
             amount: Uint128::from(3u128),
@@ -838,7 +838,7 @@ mod transfer_from {
         let recipient = HumanAddr("addr1212".to_string());
 
         // Set approval
-        let approve_msg = HandleMsg::Approve {
+        let approve_msg = ERC20HandleMsg::Approve {
             spender: spender.clone(),
             amount: Uint128::from(2u128),
         };
@@ -858,7 +858,7 @@ mod transfer_from {
         assert_eq!(get_allowance(&deps.api, &deps.storage, &owner, &spender), 2);
 
         // Transfer less than allowance but more than balance
-        let fransfer_from_msg = HandleMsg::TransferFrom {
+        let fransfer_from_msg = ERC20HandleMsg::TransferFrom {
             owner: owner.clone(),
             recipient: recipient.clone(),
             amount: Uint128::from(3u128),
@@ -887,7 +887,7 @@ mod transfer_from {
         let recipient = HumanAddr("addr1212".to_string());
 
         // Set approval
-        let approve_msg = HandleMsg::Approve {
+        let approve_msg = ERC20HandleMsg::Approve {
             spender: spender.clone(),
             amount: Uint128::from(20u128),
         };
@@ -910,7 +910,7 @@ mod transfer_from {
         );
 
         // Transfer less than allowance but more than balance
-        let fransfer_from_msg = HandleMsg::TransferFrom {
+        let fransfer_from_msg = ERC20HandleMsg::TransferFrom {
             owner: owner.clone(),
             recipient: recipient.clone(),
             amount: Uint128::from(15u128),
@@ -968,7 +968,7 @@ mod burn {
         assert_eq!(get_total_supply(&deps.storage), 33);
 
         // Burn
-        let burn_msg = HandleMsg::Burn {
+        let burn_msg = ERC20HandleMsg::Burn {
             amount: Uint128::from(1u128),
         };
         let env2 = mock_env_height(&deps.api, &HumanAddr("addr0000".to_string()), 450, 550);
@@ -1015,7 +1015,7 @@ mod burn {
         assert_eq!(get_total_supply(&deps.storage), 33);
 
         // Burn
-        let burn_msg = HandleMsg::Burn {
+        let burn_msg = ERC20HandleMsg::Burn {
             amount: Uint128::from(0u128),
         };
         let env2 = mock_env_height(&deps.api, &HumanAddr("addr0000".to_string()), 450, 550);
@@ -1062,7 +1062,7 @@ mod burn {
         assert_eq!(get_total_supply(&deps.storage), 33);
 
         // Burn
-        let burn_msg = HandleMsg::Burn {
+        let burn_msg = ERC20HandleMsg::Burn {
             amount: Uint128::from(12u128),
         };
         let env2 = mock_env_height(&deps.api, &HumanAddr("addr0000".to_string()), 450, 550);
@@ -1165,7 +1165,7 @@ mod query {
         let owner = address(2);
         let spender = address(1);
 
-        let approve_msg = HandleMsg::Approve {
+        let approve_msg = ERC20HandleMsg::Approve {
             spender: spender.clone(),
             amount: Uint128::from(42u128),
         };
@@ -1201,7 +1201,7 @@ mod query {
         let spender = address(1);
         let bob = address(3);
 
-        let approve_msg = HandleMsg::Approve {
+        let approve_msg = ERC20HandleMsg::Approve {
             spender: spender.clone(),
             amount: Uint128::from(42u128),
         };
