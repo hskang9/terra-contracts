@@ -1,7 +1,5 @@
-use std::cmp::min;
-
 use cosmwasm_std::{
-    log, to_binary, to_vec, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Empty, Env,
+    to_binary, Api, Binary,  Empty, Env,
     Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdError, StdResult,
     Storage, Uint128, WasmMsg,
 };
