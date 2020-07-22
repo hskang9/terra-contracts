@@ -63,7 +63,7 @@ pub fn pair_set<S: Storage>(
 pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<(Uint128, Uint128)> {
     let serialized = token_id.u128().to_le_bytes();
     match ReadonlyBucket::new(RESERVE_KEY, storage).may_load(&serialized) {
-        Ok(Some(reserves)) => Some(reserves),
+        Ok(Some(wrapped_reserves)) => Some(wrapped_reserves),
         _ => None,
     }
 }
@@ -74,7 +74,7 @@ pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<(Uint12
 pub fn reserve_set<S: Storage>(
     storage: &mut S,
     token_id: Uint128,
-    reserves: (Uint128, Uint128)
+    reserves: Option<(Uint128, Uint128)>
 ) -> StdResult<()> {
     let serialized = token_id.u128().to_le_bytes();
     match Bucket::new(RESERVE_KEY, storage).save(&serialized, &reserves) {

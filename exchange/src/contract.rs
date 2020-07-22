@@ -128,7 +128,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
         Some((token_canonical.clone(), env.message.sender.clone()))
     )?;
     // Register each reserve in reserves
-    reserve_set(&mut deps.storage, *channel_id, (*luna_amount, *token_amount))?;
+    reserve_set(&mut deps.storage, *channel_id, Some((*luna_amount, *token_amount)))?;
 
     let token_transfer_from =
         create_transfer_from_msg(&deps.api, &token_canonical, sender_h.clone(), contract_h.clone(), *token_amount, Some(vec![Coin {
@@ -178,7 +178,7 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     // Change reserve amount
     let new_token_reserve: Uint128 = token_reserve + *amount;
     let new_luna_reserve: Uint128 = (luna_reserve - luna_bought)?;
-    reserve_set(&mut deps.storage, *channel_id, (new_luna_reserve, new_token_reserve))?;
+    reserve_set(&mut deps.storage, *channel_id, Some((new_luna_reserve, new_token_reserve)))?;
 
     // Get token and send luna to recipient address
     let channel = pair_get(&deps.storage, *channel_id).unwrap();
@@ -298,7 +298,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     // Change reserve amount
     let new_luna_reserve: Uint128 = luna_reserve + *amount;
     let new_token_reserve: Uint128 = (token_reserve - tokens_bought)?;
-    reserve_set(&mut deps.storage, *channel_id, (new_luna_reserve, new_token_reserve))?;
+    reserve_set(&mut deps.storage, *channel_id, Some((new_luna_reserve, new_token_reserve)))?;
 
     // Get token and send luna to recipient address
     let token_transfer =
@@ -417,7 +417,8 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
     }
     .into();
 
-    pair_set(&mut deps.storage, *channel_id, None);
+    pair_set(&mut deps.storage, *channel_id, None)?;
+    reserve_set(&mut deps.storage, *channel_id, None)?;
 
     let res = HandleResponse {
         messages: vec![luna_transfer, token_transfer],
