@@ -1,14 +1,12 @@
-use std::cmp::min;
-
 use cosmwasm_std::{
-    log, to_binary, to_vec, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Empty, Env,
-    Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdError, StdResult,
-    Storage, Uint128, WasmMsg,
+    log, to_binary, Api, Binary, Empty, Env,
+    Extern, HandleResponse, HumanAddr, InitResponse, Querier, StdError, StdResult,
+    Storage, Uint128
 };
 
 use crate::msg::{
     ApprovedForAllResponse, ApprovedResponse, BalanceOfResponse, HandleMsg, InitMsg,
-    OwnerOfResponse, QueryMsg, TokenURIResponse,
+    OwnerOfResponse, QueryMsg, TokenURIResponse, ConfigResponse,
 };
 use crate::state::{
     config, config_get, holder_tokens_get, holder_tokens_set, operator_approvals_get,
@@ -282,6 +280,16 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Config{} => {
+            let config = config_get(&deps.storage)?;
+            let owner_h = deps.api.human_address(&config.owner)?;
+            let out: Binary = to_binary(&ConfigResponse {
+                name: config.name,
+                symbol: config.symbol,
+                owner: owner_h
+            })?;
+            Ok(out)
+        }
         QueryMsg::BalanceOf { address } => {
             let address_key = deps.api.canonical_address(&address)?;
             let balance = holder_tokens_get(&deps.storage, &address_key).unwrap();
@@ -311,11 +319,9 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
         }
         QueryMsg::ApprovedForAll { owner, operator } => {
             let owner_c = deps.api.canonical_address(&owner)?;
+            let operator_c = deps.api.canonical_address(&operator)?;
             let operating = operator_approvals_get(&deps.storage, &owner_c);
-            let approved_for_all = match operating {
-                Some(address) => true,
-                None => false,
-            };
+            let approved_for_all = operating.unwrap() == operator_c;
             let out = to_binary(&ApprovedForAllResponse { approved_for_all })?;
             Ok(out)
         }
