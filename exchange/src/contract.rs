@@ -1,8 +1,7 @@
-use std::cmp::min;
 
 use cosmwasm_std::{
-    log, to_binary, to_vec, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Empty, Env,
-    Extern, HandleResponse, HumanAddr, InitResponse, Querier, QueryRequest, StdError, StdResult,
+    log, to_binary, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Empty, Env,
+    Extern, HandleResponse, HumanAddr, InitResponse, Querier, StdError, StdResult,
     Storage, Uint128, WasmMsg,
 };
 
@@ -15,7 +14,7 @@ use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_
 /// tx inputs are specified in InitMsg in msg.rs file
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
-    env: Env,
+    _env: Env,
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
     let state = Config {
@@ -280,7 +279,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     recipient: &HumanAddr,
 ) -> StdResult<HandleResponse> {
     let sender_h = deps.api.human_address(&env.message.sender)?;
-    let contract_h = deps.api.human_address(&env.contract.address)?;
+    
     // Check if token is registered from pair
     let channel: Option<(CanonicalAddr, CanonicalAddr)> = pair_get(&deps.storage, *channel_id);
     if channel.is_none() {
@@ -483,10 +482,10 @@ fn create_transfer_from_msg<A: Api>(
         amount: amount,
     };
     let exec = match send {
-        Some(n) => WasmMsg::Execute {
+        Some(vector) => WasmMsg::Execute {
             contract_addr: api.human_address(contract)?,
             msg: to_binary(&msg)?,
-            send: n
+            send: vector
         },
         None => WasmMsg::Execute {
             contract_addr: api.human_address(contract)?,
@@ -509,11 +508,20 @@ fn create_transfer_msg<A: Api>(
         recipient,
         amount,
     };
-    let exec = WasmMsg::Execute {
-        contract_addr: api.human_address(contract)?,
-        msg: to_binary(&msg)?,
-        send: vec![],
-    };
+    let exec = match send {
+        Some(vector) => 
+            WasmMsg::Execute {
+                contract_addr: api.human_address(contract)?,
+                msg: to_binary(&msg)?,
+                send: vector,
+            },
+        None => 
+            WasmMsg::Execute {
+                contract_addr: api.human_address(contract)?,
+                msg: to_binary(&msg)?,
+                send: vec![],
+            }   
+    }; 
     Ok(exec.into())
 }
 
