@@ -130,6 +130,10 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     }
     .into();
 
+    // Get reserve
+    let token_without_fee = (*token_amount - token_fee)?;
+    let luna_without_fee = (*luna_amount - luna_fee)?;
+
     // Register token in Tokens
     pair_set(
         &mut deps.storage,
@@ -137,20 +141,20 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
         Some((token_canonical.clone(), env.message.sender.clone()))
     )?;
     // Register each reserve in reserves
-    reserve_set(&mut deps.storage, *channel_id, Some((*luna_amount, *token_amount)))?;
+    reserve_set(&mut deps.storage, *channel_id, Some((luna_without_fee.clone(), token_without_fee.clone())))?;
 
     let token_transfer_from =
         create_transfer_from_msg(&deps.api, &token_canonical, sender_h.clone(), contract_h.clone(), *token_amount, Some(vec![Coin {
             denom: "uluna".to_string(),
-            amount: *luna_amount,
+            amount: luna_without_fee.clone(),
         }]))?;
     let res = HandleResponse {
         messages: vec![token_transfer_from, token_fee_transfer_from, luna_fee_transfer],
         log: vec![log("action", "add_liquidity"),
                   log("registrar", deps.api.human_address(&env.message.sender)?),
                   log("to", contract_h),
-                  log("luna_amount", *luna_amount),
-                  log("token_amount", *token_amount)],
+                  log("luna_amount", luna_without_fee),
+                  log("token_amount", token_without_fee)],
         data: None,
     };
 
