@@ -80,6 +80,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,4 +91,65 @@ mod tests {
     const CANONICAL_LENGTH: usize = 20;
 
     // TODO: Add test cases for each HandleMsg
+
+    
+    macro_rules! safe_add {
+        ($x: expr, $y: expr) => {
+            match $x+$y {
+                c if c > $x => {
+                    Ok(c)
+                },
+                _ => {
+                    Err(StdError::generic_err(format!("overflow: x: {}, y: {} x+y: {}", $x, $y, $x+$y)))
+                }
+            }
+        };
+    }
+
+    macro_rules! safe_sub {
+        ($x: expr, $y: expr) => {
+            match $x-$y {
+                c if c < $x => {
+                    Ok(c)
+                },
+                _ => {
+                    Err(StdError::generic_err(format!("underflow: x: {}, y: {} x+y: {}", $x, $y, $x-$y)))
+                }
+            }
+        };
+    }
+
+    macro_rules! safe_mul {
+        ($x: expr, $y: expr) => {
+            match $x*$y {
+                c if c / $x == $y => {
+                    Ok(c)
+                },
+                _ => {
+                    Err(StdError::generic_err(format!("multiplication overflow: x: {}, y: {} x*y: {}", $x, $y, $x*$y)))
+                }
+            }
+        };
+    }
+
+    macro_rules! safe_div {
+        ($x: expr, $y: expr) => {
+            match $y {
+                b if b > 0 => {
+                    Ok($x/$y)
+                },
+                _ => {
+                    Err(StdError::generic_err(format!("divided by zero: y: {}", $y)))
+                }
+            }
+        };
+    }
+
+    
+    #[test]
+    fn test_safe_math(){
+        let result = safe_add!(1,2);
+        assert_eq!(result.unwrap(), 3);
+    }
+    
 }

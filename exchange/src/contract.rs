@@ -106,7 +106,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
         return Err(StdError::generic_err(format!("Insufficient luna deposit: luna_amount={}, required={}", luna_amount, config.minimum_luna)));
     }
 
-    // Check whether token is already registered
+    // Check whether channel is already registered
     let registered = pair_get(&deps.storage, *channel_id);
     if registered.is_some() {
         let registered_h = deps.api.human_address(&registered.clone().unwrap().0);
@@ -312,7 +312,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
                   log("from", deps.api.human_address(&env.message.sender)?),
                   log("to", recipient),
                   log("input_amount", *amount),
-                  log("luna_amount", tokens_bought)],
+                  log("token_amount", tokens_bought)],
         data: None,
     };
 
