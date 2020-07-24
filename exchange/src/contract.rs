@@ -98,6 +98,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     let sender_h = deps.api.human_address(&env.message.sender)?;
     // Human address for token contract
     let contract_h = deps.api.human_address(&env.contract.address)?;
+    let owner_h = deps.api.human_address(&config_get(&deps.storage)?.owner)?;
     let token_canonical = deps.api.canonical_address(token_address)?;
 
     // Check luna_amount > minimumLuna
@@ -114,11 +115,20 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
         return Err(StdError::generic_err(format!("Token is already registered channel_id: {}, registered_token_address: {:?}, registrar_address: {:?}", *channel_id, registered_h, registrar_h)));
     }
 
-    // Check whether the sender is the owner of the token contract
-    if config.owner != env.message.sender
-    {
-        return Err(StdError::generic_err(format!("You are not authorized to execute this function. owner: {}, sender: {}", config.owner, env.message.sender)));
+    // Give 0.1% registration fee to the dex contract owner
+    let token_fee = token_amount.clone().multiply_ratio(1u128, 1000u128);
+    let luna_fee = luna_amount.clone().multiply_ratio(1u128, 1000u128);
+    let token_fee_transfer_from =
+        create_transfer_from_msg(&deps.api, &token_canonical, sender_h.clone(), contract_h.clone(), token_fee, None)?;
+    let luna_fee_transfer = BankMsg::Send {
+        from_address: sender_h.clone(),
+        to_address: owner_h.clone(),
+        amount: vec![Coin {
+            denom: "uluna".to_string(),
+            amount: luna_fee,
+        }],
     }
+    .into();
 
     // Register token in Tokens
     pair_set(
@@ -135,7 +145,7 @@ fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
             amount: *luna_amount,
         }]))?;
     let res = HandleResponse {
-        messages: vec![token_transfer_from],
+        messages: vec![token_transfer_from, token_fee_transfer_from, luna_fee_transfer],
         log: vec![log("action", "add_liquidity"),
                   log("registrar", deps.api.human_address(&env.message.sender)?),
                   log("to", contract_h),
