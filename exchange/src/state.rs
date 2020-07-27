@@ -7,6 +7,7 @@ use cosmwasm_storage::{ReadonlyBucket, Bucket, singleton, ReadonlySingleton, Sin
 pub static CONFIG_KEY: &[u8] = b"config";
 pub static PAIR_KEY: &[u8] = b"pair";
 pub static RESERVE_KEY: &[u8] = b"reserve";
+pub static FEE_KEY: &[u8] = b"fee";
 
 /// Config struct
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -58,28 +59,53 @@ pub fn pair_set<S: Storage>(
     }
 }
 
-/// Get reserve between LUNA and token
-/// token_id: token id in bip standard
-pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<(Uint128, Uint128)> {
-    let serialized = token_id.u128().to_le_bytes();
+/// Get reserve of LUNA and token
+/// channel_id: channel identifier in dex contract
+pub fn reserve_get<S: Storage>(storage: &S, channel_id: Uint128) -> Option<(Uint128, Uint128)> {
+    let serialized = channel_id.u128().to_le_bytes();
     match ReadonlyBucket::new(RESERVE_KEY, storage).may_load(&serialized) {
         Ok(Some(wrapped_reserves)) => Some(wrapped_reserves),
         _ => None,
     }
 }
 
-/// set reserve between LUNA and token
-/// token_id: token id registered in bip standard
+/// set reserve of LUNA and token
+/// channel_id: channel identifier in dex contract
 /// returns reserves: reserve in uniswapv1 contract (LUNA, Token)
 pub fn reserve_set<S: Storage>(
     storage: &mut S,
-    token_id: Uint128,
+    channel_id: Uint128,
     reserves: Option<(Uint128, Uint128)>
 ) -> StdResult<()> {
-    let serialized = token_id.u128().to_le_bytes();
+    let serialized = channel_id.u128().to_le_bytes();
     match Bucket::new(RESERVE_KEY, storage).save(&serialized, &reserves) {
         Ok(_) => Ok(()),
         Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, reserves)))
+    }
+}
+
+/// Get dex contract owner fee of LUNA and token
+/// channel_id: channel identifier in dex contract
+pub fn fee_get<S: Storage>(storage: &S, channel_id: Uint128) -> Option<(Uint128, Uint128)> {
+    let serialized = channel_id.u128().to_le_bytes();
+    match ReadonlyBucket::new(FEE_KEY, storage).may_load(&serialized) {
+        Ok(Some(wrapped_fees)) => Some(wrapped_fees),
+        _ => None,
+    }
+}
+
+/// Set dex contract owner fee of LUNA and token
+/// channel_id: channel identifier in dex contract
+/// returns reserves: fee in the dex contract (LUNA, Token)
+pub fn fee_set<S: Storage>(
+    storage: &mut S,
+    channel_id: Uint128,
+    fees: Option<(Uint128, Uint128)>
+) -> StdResult<()> {
+    let serialized = channel_id.u128().to_le_bytes();
+    match Bucket::new(FEE_KEY, storage).save(&serialized, &fees) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, fees)))
     }
 }
 

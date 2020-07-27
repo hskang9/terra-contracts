@@ -46,6 +46,9 @@ pub enum HandleMsg {
         deadline: Uint128,
         channel_id: Uint128,
         recipient: HumanAddr
+    },
+    WithdrawFee {
+        channel_id: Uint128
     }
 }
 
