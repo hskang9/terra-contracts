@@ -133,7 +133,9 @@ pub fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
         // Set total share of liquidity providers
         total_share_set(&mut deps.storage, *channel_id, Some((*luna_amount, *token_amount)))?;
     }
-    
+    if env.message.sent_funds[0].amount != *luna_amount {
+        return Err(StdError::generic_err(format!("Insufficient luna deposit: luna_amount={}, required={}", luna_amount, env.message.sent_funds[0].amount)));
+    }
     let token_transfer_from =
         create_transfer_from_msg(&deps.api, &token_canonical, sender_h, contract_h.clone(), *token_amount, None)?;
     let res = HandleResponse {
