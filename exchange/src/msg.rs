@@ -30,7 +30,7 @@ pub enum HandleMsg {
         channel_id: Uint128,
         recipient: HumanAddr
     },
-    RemoveLiquidity {
+    WithdrawLiquidity {
         channel_id: Uint128
     },
     SwapToTokenOutput {

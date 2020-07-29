@@ -7,7 +7,7 @@ use cosmwasm_std::{
 use crate::msg::{
     ConfigResponse, ERC20HandleMsg, HandleMsg, InitMsg, PairResponse, QueryMsg, ReserveResponse,
 };
-use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_set, fee_get, fee_set, Config};
+use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_set, fee_get, fee_set, Config, share_set, share_get, total_share_get, total_share_set};
 
 /// Contract instantiation tx
 /// tx inputs are specified in InitMsg in msg.rs file
@@ -57,9 +57,9 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             channel_id,
             recipient,
         } => try_swap_to_token(deps, env, &amount, &channel_id, &recipient),
-        HandleMsg::RemoveLiquidity {
+        HandleMsg::WithdrawLiquidity {
             channel_id
-        } => try_remove_liquidity(deps, env, &channel_id),
+        } => try_withdraw_liquidity(deps, env, &channel_id),
         HandleMsg::SwapToTokenOutput {
             tokens_bought,
             max_luna,
@@ -111,17 +111,15 @@ pub fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
     // Check whether channel is already registered
     let registered = pair_get(&deps.storage, *channel_id);
     if registered.is_some() {
-        let registered_h = deps.api.human_address(&registered.clone().unwrap().0);
-        let registrar_h = deps.api.human_address(&registered.clone().unwrap().1);
-        // Check if the sender is the registrar
-        if registered.unwrap().1 != env.message.sender {
-            return Err(StdError::generic_err(format!("You are not the owner of the channel: channel_id: {}, registered_token_address: {:?}, registrar_address: {:?}", *channel_id, registered_h, registrar_h)));
-        }
         // increment each reserve in the state
         let reserves = reserve_get(&deps.storage, *channel_id).unwrap();
         reserve_set(&mut deps.storage, *channel_id, Some((reserves.0 + *luna_amount, reserves.1 + *token_amount)))?;
+        // Set share for liquidity provider
+        share_set(&mut deps.storage, *channel_id, env.message.sender.clone(), Some((*luna_amount, *token_amount)))?;
+        // Set total share of liquidity providers
+        let total_shares = total_share_get(&deps.storage, *channel_id).unwrap();
+        total_share_set(&mut deps.storage, *channel_id, Some((total_shares.0 + *luna_amount, total_shares.1 + *token_amount)))?;
     } else {
-        // Register token in Tokens
         pair_set(
             &mut deps.storage,
             *channel_id,
@@ -130,6 +128,10 @@ pub fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
         // Register each reserve in the state
         reserve_set(&mut deps.storage, *channel_id, Some((*luna_amount, *token_amount)))?;
         fee_set(&mut deps.storage, *channel_id, Some((Uint128(0),Uint128(0))))?;
+        // Set share for liquidity provider
+        share_set(&mut deps.storage, *channel_id, env.message.sender.clone(), Some((*luna_amount, *token_amount)))?;
+        // Set total share of liquidity providers
+        total_share_set(&mut deps.storage, *channel_id, Some((*luna_amount, *token_amount)))?;
     }
 
     
@@ -410,7 +412,7 @@ fn try_swap_to_token_output<S: Storage, A: Api, Q: Querier>(
 
 
 /// registrar removes channel and retrieves deposited Luna and tokens
-pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
+pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     channel_id: &Uint128
@@ -424,19 +426,18 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
         return Err(StdError::generic_err("Token is not registered yet"));
     }
 
-    // Check if the sender is the channel registrar
-    if channel.clone().unwrap().1 != env.message.sender
-    {
-        return Err(StdError::generic_err(format!("You are not authorized to execute this function. registrar: {}, sender: {}", channel.unwrap().1, env.message.sender)));
-    }
-
     // Get each reserve Index 0: Luna, Index 1: Token
     let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, *channel_id).unwrap();
     let token_reserve: Uint128 = reserves.1;
     let luna_reserve: Uint128 = reserves.0;
 
-    let token_transfer =
-    create_transfer_msg(&deps.api, &channel.unwrap().0, sender_h.clone(), token_reserve, None)?;
+    // Get share based the liquidity provider's contribution
+    let shares: (Uint128, Uint128) = share_get(&deps.storage, *channel_id, env.message.sender.clone()).unwrap();
+    let total_shares: (Uint128, Uint128) = total_share_get(&deps.storage, *channel_id).unwrap();
+    let luna_share = luna_reserve.u128()*(shares.0.u128()/ total_shares.0.u128());
+    let token_share = token_reserve.u128()*(shares.1.u128()/total_shares.1.u128());
+
+    let token_transfer = create_transfer_msg(&deps.api, &channel.unwrap().0, sender_h.clone(), Uint128(token_share), None)?;
 
 
     let luna_transfer = BankMsg::Send {
@@ -444,7 +445,7 @@ pub fn try_remove_liquidity<S: Storage, A: Api, Q: Querier>(
         to_address: sender_h.clone(),
         amount: vec![Coin {
             denom: "uluna".to_string(),
-            amount: luna_reserve,
+            amount: Uint128(luna_share),
         }],
     }
     .into();
@@ -621,7 +622,7 @@ fn create_transfer_msg<A: Api>(
 /// input_reserve: reserve of asset to exchange from in Pair state
 /// output_reserve: reserve of asset to exchange to in Pair state
 ///
-/// returns (u128, u128) as (numerator, denominator)
+/// returns price in Uint128
 fn get_input_price(
     input_amount: Uint128,
     input_reserve: Uint128,
@@ -641,7 +642,6 @@ fn get_input_price(
 /// Get output price like UniswapV1 for buy order
 /// buy order is a limit order to buy assets
 /// fee is 0.3% of the input and it is kept within contract
-/// TODO: implement buy order
 /// output_amount: amount of asset to exchange to
 /// input_reserve: reserve of asset to exchange from in Pair state
 /// output_reserve: reserve of asset to exchange to in Pair state
