@@ -1,2 +1,0 @@
-cargo:rustc-cfg=allow_clippy
-cargo:rustc-cfg=maybe_uninit

@@ -29,7 +29,7 @@ pub enum HandleMsg {
         channel_id: Uint128,
         recipient: HumanAddr,
     },
-    RemoveLiquidity {
+    WithdrawLiquidity {
         channel_id: Uint128,
     },
     SwapToTokenOutput {
@@ -45,6 +45,9 @@ pub enum HandleMsg {
         deadline: Uint128,
         channel_id: Uint128,
         recipient: HumanAddr,
+    },
+    WithdrawFee {
+        channel_id: Uint128,
     },
 }
 

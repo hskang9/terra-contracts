@@ -8,6 +8,8 @@ A liquidity provider can freely set up a liquidity channel between an erc20 toke
 Liquidity provider takes 0.3% fee on each swap transaction and deposited assets can be retrieved when the liquidity provider sends `RemoveLiquidity` transaction to the contract. After that, the channel is disappeared, and the deposited assets in the channel is sent to the liquidity provider.
 
 
+
+
 ## Interface
 
 
@@ -42,8 +44,8 @@ The suggest way to build an image is this (in the root directory):
 
 ```shell script
 docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/contracts/uniswap_v1/target \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/contracts/exchange/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.8.0 ./contracts/uniswap_v1
+  cosmwasm/rust-optimizer:0.8.0 ./contracts/exchange
 ```
 

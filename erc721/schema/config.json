@@ -4,34 +4,26 @@
   "description": "Config struct",
   "type": "object",
   "required": [
-    "minimum_luna",
+    "name",
     "owner",
-    "total_luna_supply"
+    "symbol"
   ],
   "properties": {
-    "minimum_luna": {
-      "description": "minimum luna to deposit to provide liquidity",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Uint128"
-        }
-      ]
+    "name": {
+      "description": "total luna supply that the contract has",
+      "type": "string"
     },
     "owner": {
-      "description": "canonical address of the dex owner",
+      "description": "owner",
       "allOf": [
         {
           "$ref": "#/definitions/CanonicalAddr"
         }
       ]
     },
-    "total_luna_supply": {
-      "description": "total luna supply that the contract has",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Uint128"
-        }
-      ]
+    "symbol": {
+      "description": "minimum luna to deposit to provide liquidity",
+      "type": "string"
     }
   },
   "definitions": {
@@ -41,9 +33,6 @@
     },
     "CanonicalAddr": {
       "$ref": "#/definitions/Binary"
-    },
-    "Uint128": {
-      "type": "string"
     }
   }
 }
