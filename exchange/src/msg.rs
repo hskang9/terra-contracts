@@ -1,8 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{HumanAddr, Uint128, CanonicalAddr};
-
+use cosmwasm_std::{HumanAddr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -18,20 +17,20 @@ pub enum HandleMsg {
         luna_amount: Uint128,
         token_amount: Uint128,
         token_address: HumanAddr,
-        channel_id: Uint128
+        channel_id: Uint128,
     },
     SwapTokenToLuna {
         amount: Uint128,
         channel_id: Uint128,
-        recipient: HumanAddr
+        recipient: HumanAddr,
     },
     SwapLunaToToken {
         amount: Uint128,
         channel_id: Uint128,
-        recipient: HumanAddr
+        recipient: HumanAddr,
     },
     RemoveLiquidity {
-        channel_id: Uint128
+        channel_id: Uint128,
     },
     SwapToTokenOutput {
         tokens_bought: Uint128,
@@ -45,8 +44,8 @@ pub enum HandleMsg {
         max_tokens: Uint128,
         deadline: Uint128,
         channel_id: Uint128,
-        recipient: HumanAddr
-    }
+        recipient: HumanAddr,
+    },
 }
 
 /// msg for calling external contract transaction
@@ -76,7 +75,7 @@ pub enum ERC20HandleMsg {
 pub enum QueryMsg {
     Pair { channel_id: Uint128 },
     Reserve { channel_id: Uint128 },
-    Config{},
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
@@ -86,7 +85,7 @@ pub struct PairResponse {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct ReserveResponse {
-    pub reserves: (Uint128, Uint128)
+    pub reserves: (Uint128, Uint128),
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
@@ -94,6 +93,3 @@ pub struct ConfigResponse {
     pub minimum_luna: Uint128,
     pub owner: HumanAddr,
 }
-
-
-

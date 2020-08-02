@@ -1,8 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{CanonicalAddr, Storage, Uint128, StdResult, StdError};
-use cosmwasm_storage::{ReadonlyBucket, Bucket, singleton, ReadonlySingleton, Singleton};
+use cosmwasm_std::{CanonicalAddr, StdError, StdResult, Storage, Uint128};
+use cosmwasm_storage::{singleton, Bucket, ReadonlyBucket, ReadonlySingleton, Singleton};
 
 pub static CONFIG_KEY: &[u8] = b"config";
 pub static PAIR_KEY: &[u8] = b"pair";
@@ -23,7 +23,7 @@ pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, Config> {
 }
 
 /// Get config
-pub fn config_get<S: Storage>(storage: &S) ->  StdResult<Config> {
+pub fn config_get<S: Storage>(storage: &S) -> StdResult<Config> {
     ReadonlySingleton::new(storage, CONFIG_KEY).load()
 }
 
@@ -33,9 +33,12 @@ pub fn config_set<S: Storage>(storage: &mut S, config: &Config) -> StdResult<()>
 }
 
 /// Get pair between LUNA and token
-/// channel_id: identifier for the channel between an asset and LUNA 
+/// channel_id: identifier for the channel between an asset and LUNA
 /// returns tuple (address: token contract address, registrar: registrar of the channel)
-pub fn pair_get<S: Storage>(storage: &S, channel_id: Uint128) -> Option<(CanonicalAddr, CanonicalAddr)> {
+pub fn pair_get<S: Storage>(
+    storage: &S,
+    channel_id: Uint128,
+) -> Option<(CanonicalAddr, CanonicalAddr)> {
     let serialized = channel_id.u128().to_le_bytes();
     match ReadonlyBucket::new(PAIR_KEY, storage).may_load(&serialized) {
         Ok(Some(wrapped_address)) => wrapped_address,
@@ -44,17 +47,20 @@ pub fn pair_get<S: Storage>(storage: &S, channel_id: Uint128) -> Option<(Canonic
 }
 
 /// Set pair between LUNA and token
-/// channel_id: identifier for the channel between an asset and LUNA 
+/// channel_id: identifier for the channel between an asset and LUNA
 /// tuple: (address: token contract address, registrar: registrar of the channel)
 pub fn pair_set<S: Storage>(
     storage: &mut S,
     channel_id: Uint128,
-    channel: Option<(CanonicalAddr, CanonicalAddr)>
+    channel: Option<(CanonicalAddr, CanonicalAddr)>,
 ) -> StdResult<()> {
     let serialized = channel_id.u128().to_le_bytes();
     match Bucket::new(PAIR_KEY, storage).save(&serialized, &channel) {
         Ok(_) => Ok(()),
-        Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, channel)))
+        Err(_) => Err(StdError::generic_err(format!(
+            "Failed to write to the state. key: {:?}, value: {:?}",
+            serialized, channel
+        ))),
     }
 }
 
@@ -74,13 +80,14 @@ pub fn reserve_get<S: Storage>(storage: &S, token_id: Uint128) -> Option<(Uint12
 pub fn reserve_set<S: Storage>(
     storage: &mut S,
     token_id: Uint128,
-    reserves: (Uint128, Uint128)
+    reserves: (Uint128, Uint128),
 ) -> StdResult<()> {
     let serialized = token_id.u128().to_le_bytes();
     match Bucket::new(RESERVE_KEY, storage).save(&serialized, &reserves) {
         Ok(_) => Ok(()),
-        Err(_) => Err(StdError::generic_err(format!("Failed to write to the state. key: {:?}, value: {:?}", serialized, reserves)))
+        Err(_) => Err(StdError::generic_err(format!(
+            "Failed to write to the state. key: {:?}, value: {:?}",
+            serialized, reserves
+        ))),
     }
 }
-
-
