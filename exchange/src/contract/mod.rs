@@ -3,7 +3,7 @@ pub mod exchange;
 pub mod factory;
 
 use crate::msg::{ConfigResponse, HandleMsg, InitMsg, PairResponse, QueryMsg, ReserveResponse};
-use crate::state::{config, config_get, pair_get, reserve_get, Config};
+use crate::state::exchange::{config, config_get, pair_get, reserve_get, Config};
 use cosmwasm_std::{
     to_binary, Api, Binary, Empty, Env, Extern, HandleResponse, HumanAddr, InitResponse, Querier,
     StdResult, Storage, Uint128,
@@ -129,7 +129,9 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_set, Config};
+    use crate::state::exchange::{
+        config, config_get, pair_get, pair_set, reserve_get, reserve_set, Config,
+    };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{coin, coins, CanonicalAddr, CosmosMsg, StdError, Uint128};
 

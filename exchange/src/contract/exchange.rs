@@ -1,5 +1,5 @@
 use crate::msg::ERC20HandleMsg;
-use crate::state::{
+use crate::state::exchange::{
     config_get, fee_get, fee_set, pair_get, pair_set, reserve_get, reserve_set, share_get,
     share_set, total_share_get, total_share_set,
 };
