@@ -155,6 +155,7 @@ pub fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
             )),
         )?;
     } else {
+        // TODO: replace registrar with specific lunar address value
         pair_set(
             &mut deps.storage,
             *channel_id,
