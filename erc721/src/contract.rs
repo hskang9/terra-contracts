@@ -1,12 +1,11 @@
 use cosmwasm_std::{
-    log, to_binary, Api, Binary, Empty, Env,
-    Extern, HandleResponse, HumanAddr, InitResponse, Querier, StdError, StdResult,
-    Storage, Uint128
+    log, to_binary, Api, Binary, Empty, Env, Extern, HandleResponse, HumanAddr, InitResponse,
+    Querier, StdError, StdResult, Storage, Uint128,
 };
 
 use crate::msg::{
-    ApprovedForAllResponse, ApprovedResponse, BalanceOfResponse, HandleMsg, InitMsg,
-    OwnerOfResponse, QueryMsg, TokenURIResponse, ConfigResponse,
+    ApprovedForAllResponse, ApprovedResponse, BalanceOfResponse, ConfigResponse, HandleMsg,
+    InitMsg, OwnerOfResponse, QueryMsg, TokenURIResponse,
 };
 use crate::state::{
     config, config_get, holder_tokens_get, holder_tokens_set, operator_approvals_get,
@@ -66,7 +65,7 @@ fn try_approve<S: Storage, A: Api, Q: Querier>(
         ));
     }
 
-    if token_owner.unwrap() != env.message.sender {
+    if token_owner.unwrap() != deps.api.canonical_address(&env.message.sender)? {
         return Err(StdError::generic_err(
             "invalid request: sender is not the owner of the token",
         ));
@@ -79,7 +78,7 @@ fn try_approve<S: Storage, A: Api, Q: Querier>(
         messages: vec![],
         log: vec![
             log("action", "Approval"),
-            log("from", deps.api.human_address(&env.message.sender)?),
+            log("from", env.message.sender.clone()),
             log("to", to),
             log("token_id", token_id),
         ],
@@ -103,7 +102,7 @@ fn try_set_approval_for_all<S: Storage, A: Api, Q: Querier>(
         ));
     }
 
-    if token_owner.clone().unwrap() != env.message.sender {
+    if token_owner.clone().unwrap() != deps.api.canonical_address(&env.message.sender)? {
         return Err(StdError::generic_err(
             "invalid request: sender is not the owner of the token",
         ));
@@ -115,7 +114,7 @@ fn try_set_approval_for_all<S: Storage, A: Api, Q: Querier>(
         messages: vec![],
         log: vec![
             log("action", "ApprovalForAll"),
-            log("from", deps.api.human_address(&env.message.sender)?),
+            log("from", env.message.sender.clone()),
             log("to", "all"),
             log("token_id", token_id),
         ],
@@ -134,9 +133,9 @@ fn try_transfer_from<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse> {
     let from_c = deps.api.canonical_address(&from)?;
     let to_c = deps.api.canonical_address(&to)?;
+    let sender_c = deps.api.canonical_address(&env.message.sender.clone())?;
     let token_owner = token_owner_get(&deps.storage, *token_id);
     let approver = token_approvals_get(&deps.storage, *token_id);
-    
     // Check ownership of the token
     if token_owner.is_none() {
         return Err(StdError::generic_err(
@@ -146,8 +145,10 @@ fn try_transfer_from<S: Storage, A: Api, Q: Querier>(
 
     let operator = operator_approvals_get(&deps.storage, &token_owner.clone().unwrap());
 
-    // Check whether sender is owner,approver, or operator 
-    if token_owner.clone().unwrap() != env.message.sender || approver.unwrap() != env.message.sender  || operator.unwrap() != env.message.sender 
+    // Check whether sender is owner,approver, or operator
+    if token_owner.clone().unwrap() != sender_c.clone()
+        || approver.unwrap() != sender_c.clone()
+        || operator.unwrap() != sender_c.clone()
     {
         return Err(StdError::generic_err(
             "invalid request: sender is not the owner nor approver of the token",
@@ -176,7 +177,7 @@ fn try_transfer_from<S: Storage, A: Api, Q: Querier>(
         messages: vec![],
         log: vec![
             log("action", "Transferfrom"),
-            log("from", deps.api.human_address(&env.message.sender)?),
+            log("from", env.message.sender.clone()),
             log("to", to),
             log("token_id", *token_id),
         ],
@@ -191,11 +192,10 @@ fn try_burn<S: Storage, A: Api, Q: Querier>(
     env: Env,
     token_id: &Uint128,
 ) -> StdResult<HandleResponse> {
-    let sender_h = deps.api.human_address(&env.message.sender)?;
     let res = try_transfer_from(
         deps,
-        env,
-        &sender_h,
+        env.clone(),
+        &env.message.sender,
         &HumanAddr::from("0".to_string()),
         token_id,
     );
@@ -212,7 +212,7 @@ fn try_mint<S: Storage, A: Api, Q: Querier>(
     let owner = config_get(&deps.storage).unwrap().owner;
 
     // Check sender is the token contract owner
-    if owner != env.message.sender {
+    if owner != deps.api.canonical_address(&env.message.sender.clone())? {
         return Err(StdError::generic_err(
             "invalid request: sender is not the owner of the token contract",
         ));
@@ -254,7 +254,7 @@ pub fn try_set_token_uri<S: Storage, A: Api, Q: Querier>(
         ));
     }
 
-    if token_owner.unwrap() != env.message.sender {
+    if token_owner.unwrap() != deps.api.canonical_address(&env.message.sender.clone())? {
         return Err(StdError::generic_err(
             "invalid request: sender is not the owner of the token",
         ));
@@ -280,13 +280,13 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config{} => {
+        QueryMsg::Config {} => {
             let config = config_get(&deps.storage)?;
             let owner_h = deps.api.human_address(&config.owner)?;
             let out: Binary = to_binary(&ConfigResponse {
                 name: config.name,
                 symbol: config.symbol,
-                owner: owner_h
+                owner: owner_h,
             })?;
             Ok(out)
         }
@@ -331,7 +331,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{config, config_get,Config};
+    use crate::state::{config, config_get, Config};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
     use cosmwasm_std::{coin, coins, CanonicalAddr, CosmosMsg, StdError, Uint128};
 
