@@ -1,0 +1,1 @@
+{"rustc":834860773259020163,"features":"[]","target":17924524800557481596,"profile":9935990280773120926,"path":413992736155701301,"deps":[[6669303792743813468,"serde",false,9433696173911525790]],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/serde-json-wasm-0c201eb8bb11da31/dep-lib-serde_json_wasm-0c201eb8bb11da31"}}],"rustflags":[],"metadata":4479756081480573993}
