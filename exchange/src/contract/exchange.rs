@@ -1,100 +1,12 @@
-use crate::msg::{
-    ConfigResponse, ERC20HandleMsg, HandleMsg, InitMsg, PairResponse, QueryMsg, ReserveResponse,
-};
+use crate::msg::ERC20HandleMsg;
 use crate::state::{
-    config, config_get, fee_get, fee_set, pair_get, pair_set, reserve_get, reserve_set, share_get,
-    share_set, total_share_get, total_share_set, Config,
+    config_get, fee_get, fee_set, pair_get, pair_set, reserve_get, reserve_set, share_get,
+    share_set, total_share_get, total_share_set,
 };
 use cosmwasm_std::{
-    log, to_binary, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Empty, Env, Extern,
-    HandleResponse, HumanAddr, InitResponse, Querier, StdError, StdResult, Storage, Uint128,
-    WasmMsg,
+    log, to_binary, Api, BankMsg, CanonicalAddr, Coin, CosmosMsg, Env, Extern, HandleResponse,
+    HumanAddr, Querier, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
-
-/// Contract instantiation tx
-/// tx inputs are specified in InitMsg in msg.rs file
-pub fn init<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    _env: Env,
-    msg: InitMsg,
-) -> StdResult<InitResponse> {
-    let state = Config {
-        minimum_luna: msg.minimum_luna,
-        owner: deps.api.canonical_address(&msg.owner)?,
-    };
-
-    config(&mut deps.storage).save(&state)?;
-
-    Ok(InitResponse::default())
-}
-
-/// General handler for contract tx input
-/// tx inputs are defined HandleMsg enum in msg.rs file
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
-    msg: HandleMsg,
-) -> StdResult<HandleResponse<Empty>> {
-    match msg {
-        HandleMsg::AddLiquidity {
-            luna_amount,
-            token_amount,
-            token_address,
-            channel_id,
-        } => try_add_liquidity(
-            deps,
-            env,
-            &luna_amount,
-            &token_amount,
-            &token_address,
-            &channel_id,
-        ),
-        HandleMsg::SwapTokenToLuna {
-            amount,
-            channel_id,
-            recipient,
-        } => try_swap_to_luna(deps, env, &amount, &channel_id, &recipient),
-        HandleMsg::SwapLunaToToken {
-            amount,
-            channel_id,
-            recipient,
-        } => try_swap_to_token(deps, env, &amount, &channel_id, &recipient),
-        HandleMsg::WithdrawLiquidity { channel_id } => {
-            try_withdraw_liquidity(deps, env, &channel_id)
-        }
-        HandleMsg::SwapToTokenOutput {
-            tokens_bought,
-            max_luna,
-            deadline,
-            channel_id,
-            recipient,
-        } => try_swap_to_token_output(
-            deps,
-            env,
-            &tokens_bought,
-            &max_luna,
-            &deadline,
-            &channel_id,
-            &recipient,
-        ),
-        HandleMsg::SwapToLunaOutput {
-            luna_bought,
-            max_tokens,
-            deadline,
-            channel_id,
-            recipient,
-        } => try_swap_to_luna_output(
-            deps,
-            env,
-            &luna_bought,
-            &max_tokens,
-            &deadline,
-            &channel_id,
-            &recipient,
-        ),
-        HandleMsg::WithdrawFee { channel_id } => try_withdraw_fee(deps, env, &channel_id),
-    }
-}
 
 /// Deposits LUNA and token to this contract address for registration
 /// deps: dependancies for cosmos SDK:  Storage S, Api A, Querier Q
@@ -221,7 +133,7 @@ pub fn try_add_liquidity<S: Storage, A: Api, Q: Querier>(
 /// recipient: address to receive LUNA
 /// returns
 /// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
-fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
+pub fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     amount: &Uint128,
@@ -293,7 +205,7 @@ fn try_swap_to_luna<S: Storage, A: Api, Q: Querier>(
 }
 
 // Buy maximum amount of luna using limited amount of tokens in a channel
-fn try_swap_to_luna_output<S: Storage, A: Api, Q: Querier>(
+pub fn try_swap_to_luna_output<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     luna_bought: &Uint128,
@@ -371,7 +283,7 @@ fn try_swap_to_luna_output<S: Storage, A: Api, Q: Querier>(
 /// recipient: address to receive Token
 /// returns
 /// StdResult<HandleResponse>: Result() of response message to send to cosmos SDK
-fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
+pub fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     amount: &Uint128,
@@ -436,7 +348,7 @@ fn try_swap_to_token<S: Storage, A: Api, Q: Querier>(
 }
 
 /// Buy maximum amount of token with limited luna(max_luna)
-fn try_swap_to_token_output<S: Storage, A: Api, Q: Querier>(
+pub fn try_swap_to_token_output<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     tokens_bought: &Uint128,
@@ -562,7 +474,7 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
 }
 
 /// Withdraw fee
-fn try_withdraw_fee<S: Storage, A: Api, Q: Querier>(
+pub fn try_withdraw_fee<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     channel_id: &Uint128,
@@ -622,38 +534,6 @@ fn try_withdraw_fee<S: Storage, A: Api, Q: Querier>(
     };
 
     Ok(res)
-}
-
-/// Querier interface implementation
-/// Queries are specified in QueryMsg in msg.rs
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    msg: QueryMsg,
-) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::Config {} => {
-            let config = config_get(&deps.storage)?;
-            let out = to_binary(&ConfigResponse {
-                minimum_luna: config.minimum_luna,
-                owner: deps.api.human_address(&config.owner)?,
-            })?;
-            Ok(out)
-        }
-        QueryMsg::Pair { channel_id } => {
-            let token_address: HumanAddr = match pair_get(&deps.storage, channel_id) {
-                Some(n) => deps.api.human_address(&n.0)?,
-                None => HumanAddr::from("0"),
-            };
-
-            let out = to_binary(&PairResponse { token_address })?;
-            Ok(out)
-        }
-        QueryMsg::Reserve { channel_id } => {
-            let reserves: (Uint128, Uint128) = reserve_get(&deps.storage, channel_id).unwrap();
-            let out = to_binary(&ReserveResponse { reserves })?;
-            Ok(out)
-        }
-    }
 }
 
 /// Execute TransferFrom message in ERC20 cosmwasm contract
@@ -752,24 +632,4 @@ fn get_output_price(
     let numerator: u128 = input_reserve.u128() * output_amount.u128() * 1000;
     let denominator: u128 = output_reserve.u128() - output_amount.u128() * 997;
     return Uint128(numerator + denominator / denominator.clone()); // (numerator / denominator) + 1
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::state::{config, config_get, pair_get, pair_set, reserve_get, reserve_set, Config};
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
-    use cosmwasm_std::{coin, coins, CanonicalAddr, CosmosMsg, StdError, Uint128};
-
-    const CANONICAL_LENGTH: usize = 20;
-
-    // TODO: test each HandleMsg functions
-    #[test]
-    fn try_add_liquidity_works() {
-        let mut deps = mock_dependencies(CANONICAL_LENGTH, &[]);
-        let amount1 = Uint128::from(11223344u128);
-        let owner = HumanAddr::from("addr0001");
-        let amount2 = Uint128::from(7890987u128);
-        let liquidity_provider = HumanAddr::from("addr0002");
-    }
 }
